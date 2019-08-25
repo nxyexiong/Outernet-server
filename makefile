@@ -32,7 +32,7 @@ LWIPSRC=lwip/src/core/udp.c \
         lwip/src/core/ipv6/nd6.c \
         lwip/custom/sys.c \
 
-all: main.o lwip.o
+all: lwip.o main.o
 	$(CC) $(CFLAGS) -o outernet-server main.o lwip.o
 
 main.o:
