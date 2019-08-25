@@ -3,4 +3,6 @@
 
 int main() {
     printf("helloworld");
+
+    lwip_init();
 }
