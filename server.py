@@ -2,7 +2,7 @@ import os
 import asyncio
 import threading
 import socket
-import queue
+import time
 
 from utils import open_read_pipe, open_write_pipe, get_ip_type
 
@@ -41,6 +41,8 @@ class Server:
     def handle_fifo_read(self):
         while True:
             data = os.read(self.read_fd, 65536)
+            if not data:
+                time.sleep(0.001)
             print("read from pipe: " + str(data))
             # todo
 
