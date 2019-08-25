@@ -32,11 +32,14 @@ LWIPSRC=lwip/src/core/udp.c \
         lwip/src/core/ipv6/nd6.c \
         lwip/custom/sys.c \
 
-all: lwip
-	$(CC) $(CFLAGS) main.cpp -o outernet-server
+all: main.o lwip.o
+	$(CC) $(CFLAGS) -o outernet-server main.o lwip.o
 
-lwip:
-	$(CC) $(CFLAGS) LWIPSRC -o lwip.o
+main.o:
+	$(CC) $(CFLAGS) main.cpp
+
+lwip.o:
+	$(CC) $(CFLAGS) $(LWIPSRC)
 
 clean:
 	rm -rf *.o 
