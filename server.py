@@ -19,8 +19,8 @@ class Server:
         self.read_fd = open_read_pipe(TUN2SOCKS_WRITE_FIFO)
 
     def destroy(self):
-        self.write_fd.close()
-        self.read_fd.close()
+        os.close(self.write_fd)
+        os.close(self.read_fd)
 
     def run(self):
         self.thread = threading.Thread(target=self.handle_loop)
@@ -40,7 +40,7 @@ class Server:
 
     def handle_fifo_read(self):
         while True:
-            data = self.read_fd.read()
+            data = os.read(self.read_fd)
             print("read from pipe: " + data)
             # todo
 
@@ -69,6 +69,6 @@ class Server:
                 data = data[1:]
                 ip_type = get_ip_type(data)
                 if ip_type == 4:
-                    self.write_fd.write(data)
+                    os.write(self.write_fd, data)
                 elif ip_type == 6:
                     pass  # todo: ipv6
