@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -Ilwip/includes
+CFLAGS=-Wall -g -Ilwip/src/include
 
 all:
 	$(CC) $(CFLAGS) main.cpp
