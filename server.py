@@ -43,6 +43,7 @@ class Server:
             data = os.read(self.read_fd, 65536)
             if len(data) == 0:
                 time.sleep(0.001)
+                continue
             print("read from pipe: " + str(data))
             # todo
 
@@ -71,6 +72,7 @@ class Server:
                 data = data[1:]
                 ip_type = get_ip_type(data)
                 if ip_type == 4:
+                    print("write to pipe: " + str(data))
                     os.write(self.write_fd, data)
                 elif ip_type == 6:
                     pass  # todo: ipv6
