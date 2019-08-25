@@ -1,13 +1,13 @@
 CC=gcc
 CFLAGS=-Wall -g
 
-LWIP_INCLUDES:= \
+LWIP_INCLUDES= \
     lwip/src/include/ipv4 \
     lwip/src/include/ipv6 \
     lwip/src/include \
     lwip/custom \
 
-LWIP_SOURCES:= \
+LWIP_SOURCES= \
 	lwip/src/core/udp.c \
     lwip/src/core/memp.c \
     lwip/src/core/init.c \
