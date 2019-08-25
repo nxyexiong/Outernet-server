@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -Ilwip/src/include -Ilwip/custom
+CFLAGS=-Wall -g -Ilwip/src/include -Ilwip/custom -I
 
 LWIPSRC=lwip/src/core/udp.c \
         lwip/src/core/memp.c \
