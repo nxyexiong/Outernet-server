@@ -50,7 +50,7 @@ class Server:
                 # handshake
                 send_data = b'\x01'
                 send_data += b'\x0a\x00\x00\x04'  # todo: hardcoded
-                self.client_map[b'\x0a\x00\x00\x04', addr]
+                self.client_map[b'\x0a\x00\x00\x04'] = addr
                 self.send(addr, send_data)
             elif cmd == 0x02:
                 data = data[1:]
