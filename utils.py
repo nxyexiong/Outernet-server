@@ -1,11 +1,21 @@
 import os
 
 def open_read_pipe(path):
-    fifo = os.mkfifo(path, 0o666)
+    try:
+        fifo = os.mkfifo(path, 0o666)
+    except OSError as e:
+        # errno 17: already exists
+        if e.errno != 17:
+            print(e)
     return os.open(fifo, os.O_RDONLY)
 
 def open_write_pipe(path):
-    fifo = os.mkfifo(path, 0o666)
+    try:
+        fifo = os.mkfifo(path, 0o666)
+    except OSError as e:
+        # errno 17: already exists
+        if e.errno != 17:
+            print(e)
     return os.open(fifo, os.O_WRONLY)
 
 def get_ip_type(data):
