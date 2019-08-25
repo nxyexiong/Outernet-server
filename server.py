@@ -41,7 +41,7 @@ class Server:
     def handle_fifo_read(self):
         while True:
             data = os.read(self.read_fd, 65536)
-            if not data:
+            if len(data) == 0:
                 time.sleep(0.001)
             print("read from pipe: " + str(data))
             # todo
