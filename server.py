@@ -34,15 +34,13 @@ class Server:
         while True:
             data = os.read(self.read_fd, 65536)
             data = b'\x02' + data
-            print("read from pipe len: " + str(len(data)))
+            print("read from pipe: " + str(data))
             # todo
             self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], data)
 
     def handle_client_recv(self):
         while True:
             data, addr = self.sock.recvfrom(65536)
-
-            print("recv a packet len: " + str(len(data)))
 
             cmd = data[0]
             if cmd == 0x01:
