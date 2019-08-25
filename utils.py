@@ -7,7 +7,7 @@ def open_read_pipe(path):
         # errno 17: already exists
         if e.errno != 17:
             print(e)
-    return os.open(fifo, os.O_RDONLY)
+    return os.open(path, os.O_RDONLY)
 
 def open_write_pipe(path):
     try:
@@ -16,7 +16,7 @@ def open_write_pipe(path):
         # errno 17: already exists
         if e.errno != 17:
             print(e)
-    return os.open(fifo, os.O_WRONLY)
+    return os.open(path, os.O_WRONLY)
 
 def get_ip_type(data):
     if data[0] & 0xf0 == 0x40:
