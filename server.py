@@ -18,7 +18,7 @@ class Server:
         self.write_fd = open_write_pipe(TUN2SOCKS_READ_FIFO)
         self.read_fd = open_read_pipe(TUN2SOCKS_WRITE_FIFO)
 
-    def destroy():
+    def destroy(self):
         self.write_fd.close()
         self.read_fd.close()
 
