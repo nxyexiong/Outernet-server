@@ -1,12 +1,12 @@
 import os
 
 def open_read_pipe(path):
-    fifo = os.mkfifo(path, 0666)
-    return open(fifo, , os.O_RDONLY)
+    fifo = os.mkfifo(path, 0o666)
+    return os.open(fifo, os.O_RDONLY)
 
 def open_write_pipe(path):
-    fifo = os.mkfifo(path, 0666)
-    return open(fifo, , os.O_WRONLY)
+    fifo = os.mkfifo(path, 0o666)
+    return os.open(fifo, os.O_WRONLY)
 
 def get_ip_type(data):
     if data[0] & 0xf0 == 0x40:
