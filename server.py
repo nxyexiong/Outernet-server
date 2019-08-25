@@ -41,7 +41,7 @@ class Server:
     def handle_fifo_read(self):
         while True:
             data = os.read(self.read_fd, 65536)
-            print("read from pipe: " + data)
+            print("read from pipe: " + str(data))
             # todo
 
     async def handle_recv(self):
@@ -56,7 +56,7 @@ class Server:
                 else:
                     raise err
 
-            print("recv a packet len: " + len(data))
+            print("recv a packet len: " + str(len(data)))
 
             cmd = data[0]
             if cmd == 0x01:
