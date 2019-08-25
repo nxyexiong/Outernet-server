@@ -40,7 +40,7 @@ class Server:
 
     def handle_fifo_read(self):
         while True:
-            data = os.read(self.read_fd)
+            data = os.read(self.read_fd, 65536)
             print("read from pipe: " + data)
             # todo
 
