@@ -1,8 +1,8 @@
 CC=gcc
-CFLAGS=-Wall -g
+CFLAGS=-Wall -g -Ilwip/includes
 
 all:
-	$(CC) $(CFLAGS) hello.cpp
+	$(CC) $(CFLAGS) main.cpp
 
 clean:
 	rm -rf *.o 
