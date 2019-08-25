@@ -26,18 +26,17 @@ class Server:
         self.fifo_read_thread = threading.Thread(target=self.handle_fifo_read)
         self.fifo_read_thread.start()
 
-    def send(self, client_addr, data):
+    def send_to_client(self, client_addr, data):
         # decide which client to send
         self.sock.sendto(data, client_addr)
 
     def handle_fifo_read(self):
         while True:
             data = os.read(self.read_fd, 65536)
-            if len(data) == 0:
-                time.sleep(0.001)
-                continue
-            print("read from pipe: " + str(data))
+            data = b'\x02' + data
+            print("read from pipe len: " + str(len(data)))
             # todo
+            self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], data)
 
     def handle_client_recv(self):
         while True:
@@ -51,7 +50,7 @@ class Server:
                 send_data = b'\x01'
                 send_data += b'\x0a\x00\x00\x04'  # todo: hardcoded
                 self.client_map[b'\x0a\x00\x00\x04'] = addr
-                self.send(addr, send_data)
+                self.send_to_client(addr, send_data)
             elif cmd == 0x02:
                 data = data[1:]
                 ip_type = get_ip_type(data)
