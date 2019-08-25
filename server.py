@@ -1,5 +1,4 @@
 import os
-import asyncio
 import threading
 import socket
 import time
@@ -12,7 +11,6 @@ TUN2SOCKS_WRITE_FIFO = "/tmp/tun2socks_write"
 class Server:
     def __init__(self, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setblocking(0)
         self.sock.bind(('0.0.0.0', port))
         self.client_map = {}
         self.write_fd = open_write_pipe(TUN2SOCKS_READ_FIFO)
@@ -23,16 +21,10 @@ class Server:
         os.close(self.read_fd)
 
     def run(self):
-        self.thread = threading.Thread(target=self.handle_loop)
-        self.thread.start()
+        self.client_recv_thread = threading.Thread(target=self.handle_client_recv)
+        self.client_recv_thread.start()
         self.fifo_read_thread = threading.Thread(target=self.handle_fifo_read)
         self.fifo_read_thread.start()
-
-    def handle_loop(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.loop.create_task(self.handle_recv())
-        self.loop.run_forever()
 
     def send(self, client_addr, data):
         # decide which client to send
@@ -47,17 +39,9 @@ class Server:
             print("read from pipe: " + str(data))
             # todo
 
-    async def handle_recv(self):
+    def handle_client_recv(self):
         while True:
-            try:
-                data, addr = self.sock.recvfrom(65536)
-            except socket.error as err:
-                # WOULDBLOCK, AGAIN
-                if err.errno == 10035 or err.errno == 10036:
-                    await asyncio.sleep(0.001)
-                    continue
-                else:
-                    raise err
+            data, addr = self.sock.recvfrom(65536)
 
             print("recv a packet len: " + str(len(data)))
 
