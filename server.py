@@ -69,4 +69,7 @@ class Server:
                     pass  # todo: ipv6
 
     def handle_udp_recv(self, data):
+        print("udp recv data: " + str(data))
+        print("client_map: " + str(self.client_map))
+        exit(1)
         self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], b'\x02' + data)
