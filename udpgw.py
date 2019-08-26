@@ -46,6 +46,7 @@ class UDPGW:
             send_addr = sock_bytes_to_addr(dst)
             sock.sendto(payload, send_addr)
         else:
+            print("udp cache not hit, src: " + str(src))
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             send_addr = sock_bytes_to_addr(dst)
             sock.sendto(payload, send_addr)
