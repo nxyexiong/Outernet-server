@@ -1,4 +1,5 @@
 import socket
+import queue
 import threading
 import select
 
@@ -14,6 +15,7 @@ class UDPGW:
     def __init__(self, recv_callback):
         self.cache = LRU(CACHE_SIZE, self.lru_pop)  # src to dst
         self.send_local = recv_callback
+        self.local_recv_queue = queue.Queue()
         self.remote_list = []  # remote socket list
         self.remote_map = {}   # src to remote socket
         self.dst_to_src = {}   # dst to src
@@ -23,39 +25,48 @@ class UDPGW:
 
     def run(self):
         self.running = True
-        self.thread = threading.Thread(target=self.recv_remote)
-        self.thread.start()
+        self.remote_thread = threading.Thread(target=self.handle_recv_remote)
+        self.remote_thread.start()
+        self.local_thread = threading.Thread(target=self.handle_recv_local)
+        self.local_thread.start()
 
     def recv_local(self, data):
-        ip_header_len = get_header_length_from_ipv4(data)
-        ip_src = get_src_from_ipv4(data)
-        ip_dst = get_dst_from_ipv4(data)
-        udp_data = data[ip_header_len:]
-        udp_src = get_src_from_udp(udp_data)
-        udp_dst = get_dst_from_udp(udp_data)
-        payload = get_payload_from_udp(udp_data)
+        self.local_recv_queue.put(data)
 
-        src = ip_src + udp_src
-        dst = ip_dst + udp_dst
+    def handle_recv_local(self):
+        while self.running:
+            data = self.local_recv_queue.get()
 
-        cache_dst = self.cache.get(src)
-        if cache_dst:
-            # udp cache hit
-            print("udp cache hit, src: " + str(src) + ", remote_map: " + str(self.remote_map) + ", cache: " + str(self.cache.map))
-            sock = self.remote_map[src]
-            send_addr = sock_bytes_to_addr(dst)
-            sock.sendto(payload, send_addr)
-        else:
-            print("udp cache not hit, src: " + str(src))
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            send_addr = sock_bytes_to_addr(dst)
-            sock.sendto(payload, send_addr)
-            self.remote_list.append(sock)
-            self.cache.set(src, dst)
-            self.remote_map[src] = sock
-            self.dst_to_src[dst] = src
+            ip_header_len = get_header_length_from_ipv4(data)
+            ip_src = get_src_from_ipv4(data)
+            ip_dst = get_dst_from_ipv4(data)
+            udp_data = data[ip_header_len:]
+            udp_src = get_src_from_udp(udp_data)
+            udp_dst = get_dst_from_udp(udp_data)
+            payload = get_payload_from_udp(udp_data)
 
-    def recv_remote(self):
+            src = ip_src + udp_src
+            dst = ip_dst + udp_dst
+
+            cache_dst = self.cache.get(src)
+            if cache_dst:
+                # udp cache hit
+                print("udp cache hit, src: " + str(src) + ", remote_map: " + str(self.remote_map) + ", cache: " + str(self.cache.map))
+                sock = self.remote_map[src]
+                send_addr = sock_bytes_to_addr(dst)
+                sock.sendto(payload, send_addr)
+            else:
+                print("udp cache not hit, src: " + str(src))
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.bind(('', 0))
+                self.remote_list.append(sock)
+                self.cache.set(src, dst)
+                self.remote_map[src] = sock
+                self.dst_to_src[dst] = src
+                send_addr = sock_bytes_to_addr(dst)
+                sock.sendto(payload, send_addr)
+
+    def handle_recv_remote(self):
         while self.running:
             recv_socks, _, _ = select.select(self.remote_list, [], [])
             for sock in recv_socks:
