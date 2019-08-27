@@ -51,12 +51,10 @@ class UDPGW:
             cache_dst = self.cache.get(src)
             if cache_dst:
                 # udp cache hit
-                print("udp cache hit, src: " + str(src) + ", remote_map: " + str(self.remote_map) + ", cache: " + str(self.cache.map))
                 sock = self.remote_map[src]
                 send_addr = sock_bytes_to_addr(dst)
                 sock.sendto(payload, send_addr)
             else:
-                print("udp cache not hit, src: " + str(src))
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.bind(('', 0))
                 self.remote_list.append(sock)

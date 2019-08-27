@@ -77,8 +77,8 @@ def create_ipv4_udp(ip_src, ip_dst, udp_src, udp_dst, payload):
     # Destination addr
     data += ip_dst
 
-    # calculate checksum
-    data = data[:10] + checksum_16bit(data) + data[12:]
+    # calculate ip checksum
+    data = data[:10] + wrapsum_16bit(checksum_16bit(data)) + data[12:]
 
     # udp src
     data += udp_src
@@ -86,21 +86,37 @@ def create_ipv4_udp(ip_src, ip_dst, udp_src, udp_dst, payload):
     data += udp_dst
     # udp length
     data += bytes([udp_len >> 8, udp_len % 256])
-    # udp checksum(unused)
+    # udp checksum(set later)
     data += b'\x00\x00'
     # payload
     data += payload
 
+    # calculate udp checksum
+    data = data[:26] + get_udp_checksum(data) + data[28:]
+
     return data
+
+def get_udp_checksum(data):
+    checksum = checksum_16bit(data[12:])
+    checksum += 0x11 + len(data[20:])
+    if checksum > 0xffff:
+        checksum -= 0xffff
+    return wrapsum_16bit(checksum)
 
 def checksum_16bit(data):
     length = len(data)
+    if length % 2 == 1:
+        data += b'\x00'
+        length += 1
     length = length >> 1
     checksum = 0x0000
     for i in range(length):
         checksum += int(data[2 * i]) * 256 + int(data[2 * i + 1])
-    while checksum > 0xffff:
-        checksum = (checksum % 65536) + (checksum >> 16)
+        if checksum > 0xffff:
+            checksum -= 0xffff
+    return checksum
+
+def wrapsum_16bit(checksum):
     checksum = 0xffff - checksum
     return bytes([checksum >> 8, checksum % 256])
 
