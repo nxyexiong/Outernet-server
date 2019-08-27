@@ -1,6 +1,7 @@
 import socket
 import queue
 import threading
+import time
 import select
 
 from lru import LRU
@@ -66,7 +67,10 @@ class UDPGW:
 
     def handle_recv_remote(self):
         while self.running:
-            recv_socks, _, _ = select.select(self.remote_list, [], [])
+            recv_socks, _, _ = select.select(self.remote_list, [], [], 0)
+            if len(recv_socks) == 0:
+                time.sleep(0.001)
+                continue
             for sock in recv_socks:
                 data, addr = sock.recvfrom(65536)
                 dst = sock_addr_to_bytes(addr)
