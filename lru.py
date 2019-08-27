@@ -24,7 +24,7 @@ class LRU:
     def update(self, key):
         try:
             value = self.map.get(key)
-            self.pop(key)
+            self.map.pop(key)
             self.map[key] = value
         except Exception:
             return
