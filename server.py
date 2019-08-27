@@ -40,7 +40,7 @@ class Server:
         while self.running:
             data = os.read(self.read_fd, 65536)
             data = b'\x02' + data
-            print("read from pipe: " + str(data))
+            print("read from pipe len: " + str(len(data)))
             # todo
             self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], data)
 
@@ -61,7 +61,7 @@ class Server:
                 if ip_type == 4:
                     protocol = data[9]
                     if protocol == 0x06:  # TCP
-                        print("write to pipe: " + str(data))
+                        print("write to pipe len: " + str(len(data)))
                         os.write(self.write_fd, data)
                     elif protocol == 0x11:  # UDP
                         self.udp_gateway.recv_local(data)
@@ -69,6 +69,4 @@ class Server:
                     pass  # todo: ipv6
 
     def handle_udp_recv(self, data):
-        print("udp recv data: " + str(data))
-        print("client_map: " + str(self.client_map))
         self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], b'\x02' + data)

@@ -76,6 +76,9 @@ class UDPGW:
                 ip_dst = src[:4]
                 udp_dst = src[4:]
                 packet = create_ipv4_udp(ip_src, ip_dst, udp_src, udp_dst, data)
+                print("==================")
+                print(str(packet))
+                print("==================")
                 self.send_local(packet)
 
     def lru_pop(self, key, value):
