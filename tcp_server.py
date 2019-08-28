@@ -29,8 +29,11 @@ class TCPServer:
         self.udp_gateway.run()
 
     def send_to_client(self, client, data):
-        # decide which client to send
-        client.sendall(self.wrap_data(data))
+        try:
+            # decide which client to send
+            client.sendall(self.wrap_data(data))
+        except Exception:
+            client.close()
 
     def handle_accept(self):
         while self.running:
@@ -78,6 +81,7 @@ class TCPServer:
                 data = client.recv(1024)
                 recv_buf += data
             except Exception:
+                client.close()
                 break
 
             if len(recv_buf) < 2:
