@@ -35,6 +35,8 @@ class Server:
     def send_to_client(self, client_addr, data):
         # decide which client to send
         self.sock.sendto(data, client_addr)
+        self.sock.sendto(data, client_addr)
+        self.sock.sendto(data, client_addr)
 
     def handle_fifo_read(self):
         while self.running:
@@ -58,7 +60,8 @@ class Server:
                     send_data = data[:total_length]
                     data = data[total_length:]
                 else:
-                    print("wtf is this!!!!!!!!!!!!!")
+                    # unknown packet
+                    break
 
                 if not send_data:
                     continue
