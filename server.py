@@ -39,12 +39,33 @@ class Server:
     def handle_fifo_read(self):
         while self.running:
             data = os.read(self.read_fd, 65536)
-            data = b'\x02' + data
-            print("read from pipe len: " + str(len(data)))
-            if len(data) > 1000:
-                print(data[:100])
-            # todo
-            self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], data)
+            while len(data) != 0:
+                send_data = None
+                # length
+                if data[0] & 0xf0 == 0x40:
+                    # ipv4
+                    # get length
+                    total_length = 256 * data[2] + data[3]
+                    # ready to handle
+                    send_data = data[:total_length]
+                    data = data[total_length:]
+
+                if data[0] & 0xf0 == 0x60:
+                    # todo: ipv6
+                    # get length
+                    payload_length = 256 * data[4] + data[5]
+                    total_length = payload_length + 40
+                    # ready to handle
+                    send_data = data[:total_length]
+                    data = data[total_length:]
+
+                if not send_data:
+                    continue
+
+                send_data = b'\x02' + send_data
+                print("read from pipe len: " + str(len(send_data)))
+                # todo
+                self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], send_data)
 
     def handle_client_recv(self):
         while self.running:
