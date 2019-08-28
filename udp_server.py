@@ -9,7 +9,7 @@ from utils import open_read_pipe, open_write_pipe, get_ip_type
 TUN2SOCKS_READ_FIFO = "/tmp/tun2socks_read"
 TUN2SOCKS_WRITE_FIFO = "/tmp/tun2socks_write"
 
-class Server:
+class UDPServer:
     def __init__(self, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', port))
