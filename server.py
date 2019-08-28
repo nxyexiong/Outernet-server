@@ -41,6 +41,8 @@ class Server:
             data = os.read(self.read_fd, 65536)
             data = b'\x02' + data
             print("read from pipe len: " + str(len(data)))
+            if len(data) > 1000:
+                print(data[:100])
             # todo
             self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], data)
 
