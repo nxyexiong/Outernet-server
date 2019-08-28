@@ -6,9 +6,9 @@ import time
 from udpgw import UDPGW
 from utils import get_ip_type
 
-class UDPServer:
+class TCPServer:
     def __init__(self, port, write_fd, read_fd):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('', port))
         self.client_map = {}
         self.write_fd = write_fd
@@ -21,15 +21,21 @@ class UDPServer:
 
     def run(self):
         self.running = True
-        self.client_recv_thread = threading.Thread(target=self.handle_client_recv)
-        self.client_recv_thread.start()
+        self.accept_thread = threading.Thread(target=self.handle_accept)
+        self.accept_thread.start()
         self.fifo_read_thread = threading.Thread(target=self.handle_fifo_read)
         self.fifo_read_thread.start()
         self.udp_gateway.run()
 
-    def send_to_client(self, client_addr, data):
+    def send_to_client(self, client, data):
         # decide which client to send
-        self.sock.sendto(data, client_addr)
+        client.sendall(self.wrap_data(data))
+
+    def handle_accept(self):
+        while self.running:
+            client = self.sock.accept()
+            client_thread = threading.Thread(target=self.handle_client_recv, args=(client))
+            client_thread.start()
 
     def handle_fifo_read(self):
         while self.running:
@@ -64,17 +70,34 @@ class UDPServer:
                 # todo
                 self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], send_data)
 
-    def handle_client_recv(self):
+    def handle_client_recv(self, client):
+        recv_buf = b''
         while self.running:
-            data, addr = self.sock.recvfrom(65536)
+            try:
+                data = client.recv()
+                recv_buf += data
+            except Exception:
+                break
+
+            if len(recv_buf) < 2:
+                time.sleep(0.001)
+                continue
+
+            length = recv_buf[0] * 256 + recv_buf[1]
+            if len(recv_buf) < 2 + length:
+                time.sleep(0.001)
+                continue
+
+            data = recv_buf[2:2 + length]
+            recv_buf = recv_buf[2 + length:]
 
             cmd = data[0]
             if cmd == 0x01:
                 # handshake
                 send_data = b'\x01'
                 send_data += b'\x0a\x00\x00\x04'  # todo: hardcoded
-                self.client_map[b'\x0a\x00\x00\x04'] = addr
-                self.send_to_client(addr, send_data)
+                self.client_map[b'\x0a\x00\x00\x04'] = client
+                client.sendall(self.wrap_data(send_data))
             elif cmd == 0x02:
                 data = data[1:]
                 ip_type = get_ip_type(data)
@@ -90,3 +113,7 @@ class UDPServer:
 
     def handle_udp_recv(self, data):
         self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], b'\x02' + data)
+
+    def wrap_data(self, data):
+        length = len(data)
+        return bytes([length >> 8, length % 256]) + data
