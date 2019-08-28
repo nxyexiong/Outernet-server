@@ -35,7 +35,7 @@ class TCPServer:
     def handle_accept(self):
         while self.running:
             client, _ = self.sock.accept()
-            client_thread = threading.Thread(target=self.handle_client_recv, args=(client))
+            client_thread = threading.Thread(target=self.handle_client_recv, args=(client,))
             client_thread.start()
 
     def handle_fifo_read(self):
