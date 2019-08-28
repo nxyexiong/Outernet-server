@@ -33,7 +33,7 @@ class TCPServer:
 
     def handle_accept(self):
         while self.running:
-            client = self.sock.accept()
+            client, _ = self.sock.accept()
             client_thread = threading.Thread(target=self.handle_client_recv, args=(client))
             client_thread.start()
 
