@@ -49,8 +49,7 @@ class Server:
                     # ready to handle
                     send_data = data[:total_length]
                     data = data[total_length:]
-
-                if data[0] & 0xf0 == 0x60:
+                elif data[0] & 0xf0 == 0x60:
                     # todo: ipv6
                     # get length
                     payload_length = 256 * data[4] + data[5]
@@ -58,6 +57,8 @@ class Server:
                     # ready to handle
                     send_data = data[:total_length]
                     data = data[total_length:]
+                else:
+                    print("wtf is this!!!!!!!!!!!!!")
 
                 if not send_data:
                     continue
