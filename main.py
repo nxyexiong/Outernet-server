@@ -12,8 +12,8 @@ if __name__ == "__main__":
     write_fd = open_write_pipe(TUN2SOCKS_READ_FIFO)
     read_fd = open_read_pipe(TUN2SOCKS_WRITE_FIFO)
 
-    udpserver = UDPServer(6666, write_fd, read_fd)
-    udpserver.run()
+    #udpserver = UDPServer(6666, write_fd, read_fd)
+    #udpserver.run()
     tcpserver = TCPServer(7777, write_fd, read_fd)
     tcpserver.run()
 
