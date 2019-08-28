@@ -35,8 +35,6 @@ class Server:
     def send_to_client(self, client_addr, data):
         # decide which client to send
         self.sock.sendto(data, client_addr)
-        self.sock.sendto(data, client_addr)
-        self.sock.sendto(data, client_addr)
 
     def handle_fifo_read(self):
         while self.running:
