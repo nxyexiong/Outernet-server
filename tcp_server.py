@@ -10,6 +10,7 @@ class TCPServer:
     def __init__(self, port, write_fd, read_fd):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('', port))
+        self.sock.listen()
         self.client_map = {}
         self.write_fd = write_fd
         self.read_fd = read_fd
