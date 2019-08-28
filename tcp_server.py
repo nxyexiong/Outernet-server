@@ -32,6 +32,7 @@ class TCPServer:
         try:
             # decide which client to send
             client.sendall(self.wrap_data(data))
+            print("send to client len: " + str(len(data)))
         except Exception:
             client.close()
 
@@ -96,13 +97,19 @@ class TCPServer:
             data = recv_buf[2:2 + length]
             recv_buf = recv_buf[2 + length:]
 
+            print("recv from client len: " + str(len(data)))
+
             cmd = data[0]
             if cmd == 0x01:
                 # handshake
                 send_data = b'\x01'
                 send_data += b'\x0a\x00\x00\x04'  # todo: hardcoded
                 self.client_map[b'\x0a\x00\x00\x04'] = client
-                client.sendall(self.wrap_data(send_data))
+                try:
+                    client.sendall(self.wrap_data(send_data))
+                except Exception:
+                    client.close()
+                    break
             elif cmd == 0x02:
                 data = data[1:]
                 ip_type = get_ip_type(data)
