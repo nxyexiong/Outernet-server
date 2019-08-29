@@ -81,9 +81,9 @@ class TCPServer:
                 if not send_data:
                     continue
 
-                send_data = b'\x02' + send_data
                 print("read from pipe len: " + str(len(send_data)))
                 # todo
+                send_data = b'\x02' + send_data
                 self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], send_data)
 
     def handle_client_recv(self, client):
