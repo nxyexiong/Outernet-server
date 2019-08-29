@@ -44,7 +44,7 @@ class TCPServer:
 
     def handle_fifo_read(self):
         while self.running:
-            data = os.read(self.read_fd, 65536)
+            data = os.read(self.read_fd, 3000)
             while len(data) != 0:
                 send_data = None
                 # length
@@ -79,7 +79,7 @@ class TCPServer:
         recv_buf = b''
         while self.running:
             try:
-                data = client.recv(1024)
+                data = client.recv(3000)
                 recv_buf += data
             except Exception:
                 client.close()

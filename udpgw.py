@@ -10,7 +10,7 @@ from utils import get_header_length_from_ipv4, get_src_from_ipv4, \
                   get_payload_from_udp, sock_addr_to_bytes, sock_bytes_to_addr, \
                   create_ipv4_udp
 
-CACHE_SIZE = 128
+CACHE_SIZE = 48
 
 class UDPGW:
     def __init__(self, recv_callback):
@@ -80,9 +80,6 @@ class UDPGW:
                 ip_dst = src[:4]
                 udp_dst = src[4:]
                 packet = create_ipv4_udp(ip_src, ip_dst, udp_src, udp_dst, data)
-                print("==================")
-                print(str(packet))
-                print("==================")
                 self.send_local(packet)
 
     def lru_pop(self, key, value):

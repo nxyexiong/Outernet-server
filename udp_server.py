@@ -33,7 +33,7 @@ class UDPServer:
 
     def handle_fifo_read(self):
         while self.running:
-            data = os.read(self.read_fd, 65536)
+            data = os.read(self.read_fd, 3000)
             while len(data) != 0:
                 send_data = None
                 # length
@@ -66,7 +66,7 @@ class UDPServer:
 
     def handle_client_recv(self):
         while self.running:
-            data, addr = self.sock.recvfrom(65536)
+            data, addr = self.sock.recvfrom(3000)
 
             cmd = data[0]
             if cmd == 0x01:
