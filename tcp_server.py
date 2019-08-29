@@ -86,7 +86,7 @@ class TCPServer:
         recv_buf = b''
         while self.running:
             try:
-                data = client.recv(3000)
+                data = client.recv(2000)
                 recv_buf += data
             except Exception:
                 client.close()

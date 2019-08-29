@@ -74,7 +74,7 @@ class UDPServer:
     def handle_client_recv(self):
         while self.running:
             try:
-                data, addr = self.sock.recvfrom(3000)
+                data, addr = self.sock.recvfrom(2000)
             except Exception:
                 continue
 
