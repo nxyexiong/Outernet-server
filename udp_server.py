@@ -32,9 +32,11 @@ class UDPServer:
         self.sock.sendto(data, client_addr)
 
     def handle_fifo_read(self):
+        data = b''
         while self.running:
-            data = os.read(self.read_fd, 3000)
-            while len(data) != 0:
+            tmp = os.read(self.read_fd, 1024)
+            data += tmp
+            while len(data) > 0:
                 send_data = None
                 # length
                 if data[0] & 0xf0 == 0x40:
@@ -42,6 +44,8 @@ class UDPServer:
                     # get length
                     total_length = 256 * data[2] + data[3]
                     # ready to handle
+                    if total_length > len(data):
+                        break
                     send_data = data[:total_length]
                     data = data[total_length:]
                 elif data[0] & 0xf0 == 0x60:
@@ -50,10 +54,13 @@ class UDPServer:
                     payload_length = 256 * data[4] + data[5]
                     total_length = payload_length + 40
                     # ready to handle
+                    if total_length > len(data):
+                        break
                     send_data = data[:total_length]
                     data = data[total_length:]
                 else:
                     # unknown packet
+                    data = b''
                     break
 
                 if not send_data:
@@ -66,7 +73,10 @@ class UDPServer:
 
     def handle_client_recv(self):
         while self.running:
-            data, addr = self.sock.recvfrom(3000)
+            try:
+                data, addr = self.sock.recvfrom(3000)
+            except Exception:
+                continue
 
             cmd = data[0]
             if cmd == 0x01:

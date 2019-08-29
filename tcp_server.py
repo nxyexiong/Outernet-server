@@ -43,9 +43,11 @@ class TCPServer:
             client_thread.start()
 
     def handle_fifo_read(self):
+        data = b''
         while self.running:
-            data = os.read(self.read_fd, 3000)
-            while len(data) != 0:
+            tmp = os.read(self.read_fd, 1024)
+            data += tmp
+            while len(data) > 0:
                 send_data = None
                 # length
                 if data[0] & 0xf0 == 0x40:
@@ -53,6 +55,8 @@ class TCPServer:
                     # get length
                     total_length = 256 * data[2] + data[3]
                     # ready to handle
+                    if total_length > len(data):
+                        break
                     send_data = data[:total_length]
                     data = data[total_length:]
                 elif data[0] & 0xf0 == 0x60:
@@ -61,10 +65,13 @@ class TCPServer:
                     payload_length = 256 * data[4] + data[5]
                     total_length = payload_length + 40
                     # ready to handle
+                    if total_length > len(data):
+                        break
                     send_data = data[:total_length]
                     data = data[total_length:]
                 else:
                     # unknown packet
+                    data = b''
                     break
 
                 if not send_data:
