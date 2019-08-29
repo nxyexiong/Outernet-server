@@ -34,7 +34,7 @@ class UDPServer:
     def handle_fifo_read(self):
         data = b''
         while self.running:
-            tmp = os.read(self.read_fd, 1024)
+            tmp = os.read(self.read_fd, 1500)
             data += tmp
             while len(data) > 0:
                 send_data = None
@@ -42,6 +42,8 @@ class UDPServer:
                 if data[0] & 0xf0 == 0x40:
                     # ipv4
                     # get length
+                    if 4 > len(data):
+                        break
                     total_length = 256 * data[2] + data[3]
                     # ready to handle
                     if total_length > len(data):
@@ -51,6 +53,8 @@ class UDPServer:
                 elif data[0] & 0xf0 == 0x60:
                     # todo: ipv6
                     # get length
+                    if 6 > len(data):
+                        break
                     payload_length = 256 * data[4] + data[5]
                     total_length = payload_length + 40
                     # ready to handle
