@@ -114,5 +114,7 @@ class UDPServer:
         return data
 
     def unwrap_data(self, data):
-        data, _ = self.cipher.decrypt_all(data)
+        data, length = self.cipher.decrypt_all(data)
+        print(length)
+        print(data)
         return data
