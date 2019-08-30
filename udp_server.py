@@ -84,7 +84,7 @@ class UDPServer:
             except Exception:
                 continue
 
-            data, _ = self.unwrap_data(data)
+            data = self.unwrap_data(data)
 
             cmd = data[0]
             if cmd == 0x01:
@@ -114,7 +114,5 @@ class UDPServer:
         return data
 
     def unwrap_data(self, data):
-        data, length = self.cipher.decrypt_all(data)
-        print(length)
-        print(data)
+        data, _ = self.cipher.decrypt_all(data)
         return data
