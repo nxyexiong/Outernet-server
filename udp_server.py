@@ -84,7 +84,7 @@ class UDPServer:
             except Exception:
                 continue
 
-            data, _ = self.wrap_data(data)
+            data, _ = self.unwrap_data(data)
 
             cmd = data[0]
             if cmd == 0x01:
