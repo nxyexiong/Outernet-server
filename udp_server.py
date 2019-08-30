@@ -70,7 +70,7 @@ class UDPServer:
                 if not send_data:
                     continue
 
-                print("read from pipe len: " + str(len(send_data)))
+                #print("read from pipe len: " + str(len(send_data)))
                 # todo
                 send_data = b'\x02' + send_data
                 self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], send_data)
@@ -95,7 +95,7 @@ class UDPServer:
                 if ip_type == 4:
                     protocol = data[9]
                     if protocol == 0x06:  # TCP
-                        print("write to pipe len: " + str(len(data)))
+                        #print("write to pipe len: " + str(len(data)))
                         os.write(self.write_fd, data)
                     elif protocol == 0x11:  # UDP
                         self.udp_gateway.recv_local(data)
