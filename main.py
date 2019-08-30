@@ -32,7 +32,7 @@ if __name__ == "__main__":
     read_fd = open_read_pipe(TUN2SOCKS_WRITE_FIFO)
 
     if enable_udp:
-        udpserver = UDPServer(6666, write_fd, read_fd)
+        udpserver = UDPServer(b'nxyexiong', 6666, write_fd, read_fd)
         udpserver.run()
 
     if enable_tcp:

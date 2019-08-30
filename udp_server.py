@@ -3,17 +3,19 @@ import threading
 import socket
 import time
 
+from cipher import AESCipher
 from udpgw import UDPGW
 from utils import get_ip_type
 
 class UDPServer:
-    def __init__(self, port, write_fd, read_fd):
+    def __init__(self, secret, port, write_fd, read_fd):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', port))
         self.client_map = {}
         self.write_fd = write_fd
         self.read_fd = read_fd
         self.udp_gateway = UDPGW(self.handle_udp_recv)
+        self.cipher = AESCipher(secret)
 
     def destroy(self):
         self.running = False
@@ -29,7 +31,7 @@ class UDPServer:
 
     def send_to_client(self, client_addr, data):
         # decide which client to send
-        self.sock.sendto(data, client_addr)
+        self.sock.sendto(self.wrap_data(data), client_addr)
 
     def handle_fifo_read(self):
         data = b''
@@ -82,6 +84,8 @@ class UDPServer:
             except Exception:
                 continue
 
+            data, _ = self.wrap_data(data)
+
             cmd = data[0]
             if cmd == 0x01:
                 # handshake
@@ -104,3 +108,11 @@ class UDPServer:
 
     def handle_udp_recv(self, data):
         self.send_to_client(self.client_map[b'\x0a\x00\x00\x04'], b'\x02' + data)
+
+    def wrap_data(self, data):
+        data = self.cipher.encrypt_all(data)
+        return data
+
+    def unwrap_data(self, data):
+        data, _ = self.cipher.decrypt_all(data)
+        return data
