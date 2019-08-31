@@ -25,13 +25,11 @@ class TUN:
         self.read_thread.start()
 
     def write(self, data):
-        print("tun write")
         os.write(self.tun, data)
 
     def handle_read(self):
         while True:
             data = os.read(self.tun, 2048)
-            print("tun read")
             if not self.recv_cb:
                 continue
             self.recv_cb(data)

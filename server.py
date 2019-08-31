@@ -24,13 +24,11 @@ class Server:
     def send_to_client(self, data):
         if not self.client_addr:
             return
-        print("server send")
         self.sock.sendto(self.wrap_data(data), self.client_addr)
 
     def handle_recv(self):
         while True:
             data, src = self.sock.recvfrom(2048)
-            print("server recv")
             self.client_addr = src
             data = self.unwrap_data(data)
             self.tun.write(data)
