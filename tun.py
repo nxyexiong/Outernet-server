@@ -12,6 +12,7 @@ IFF_NO_PI = 0x1000
 
 class TUN:
     def __init__(self, name, recv_callback):
+        print("tun init with name:", name)
         self.tun = os.open('/dev/net/tun', os.O_RDWR)
         ifr = struct.pack('16sH', name.encode('utf-8'), IFF_TUN | IFF_NO_PI)
         fcntl.ioctl(self.tun, TUNSETIFF, ifr)
@@ -19,15 +20,18 @@ class TUN:
         self.recv_cb = recv_callback
 
     def run(self):
+        print("tun run")
         self.read_thread = threading.Thread(target=self.handle_read)
         self.read_thread.start()
 
     def write(self, data):
+        print("tun write")
         os.write(self.tun, data)
 
     def handle_read(self):
         while True:
             data = os.read(self.tun, 2048)
+            print("tun read")
             if not self.recv_cb:
                 continue
             self.recv_cb(data)

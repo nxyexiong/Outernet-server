@@ -8,6 +8,7 @@ from tun import TUN
 
 class Server:
     def __init__(self, secret, port, tun_name):
+        print("server init with port:", port, "secret:", secret, "tun_name:", tun_name)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', port))
         self.tun = TUN(tun_name, self.handle_tun_read)
@@ -15,6 +16,7 @@ class Server:
         self.client_addr = None
 
     def run(self):
+        print("server run")
         self.tun.run()
         self.recv_thread = threading.Thread(target=self.handle_recv)
         self.recv_thread.start()
@@ -22,11 +24,13 @@ class Server:
     def send_to_client(self, data):
         if not self.client_addr:
             return
+        print("server send")
         self.sock.sendto(self.wrap_data(data), self.client_addr)
 
     def handle_recv(self):
         while True:
             data, src = self.sock.recvfrom(2048)
+            print("server recv")
             self.client_addr = src
             data = self.unwrap_data(data)
             self.tun.write(data)
