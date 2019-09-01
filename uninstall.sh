@@ -1,2 +1,2 @@
 echo 0 > /proc/sys/net/ipv4/ip_forward
-ip link delete tun0
+ip link delete $1

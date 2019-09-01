@@ -18,17 +18,24 @@ class TUN:
         fcntl.ioctl(self.tun, TUNSETIFF, ifr)
         fcntl.ioctl(self.tun, TUNSETOWNER, 1000)
         self.recv_cb = recv_callback
+        self.running = False
 
     def run(self):
         print("tun run")
+        self.running = True
         self.read_thread = threading.Thread(target=self.handle_read)
         self.read_thread.start()
+
+    def stop(self):
+        print("tun stop")
+        self.running = False
+        os.close(self.tun)
 
     def write(self, data):
         os.write(self.tun, data)
 
     def handle_read(self):
-        while True:
+        while self.running:
             data = os.read(self.tun, 2048)
             if not self.recv_cb:
                 continue
