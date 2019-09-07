@@ -135,7 +135,7 @@ class Controller:
     def alloc_tun_name(self):
         for i in range(0, 255):
             tun_name = 'tun' + str(i)
-            if tun_name in self.tun_name_list:
+            if tun_name not in self.tun_name_list:
                 continue
             self.tun_name_list.remove(tun_name)
             return tun_name
