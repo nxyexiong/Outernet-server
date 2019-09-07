@@ -39,7 +39,7 @@ class Controller:
         print("controller stop")
         self.running = False
         self.sock.close()
-        for key, value in self.server_to_tun_name:
+        for key, value in self.server_to_tun_name.items():
             key.stop()
             os.system('./uninstall.sh ' + value)
 
@@ -105,7 +105,7 @@ class Controller:
 
     def handle_timeout(self):
         while self.running:
-            for identification, server in self.id_to_server:
+            for identification, server in self.id_to_server.items():
                 now = time.time()
                 tun_name = self.server_to_tun_name.get(server)
                 if not tun_name:
