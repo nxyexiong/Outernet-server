@@ -78,7 +78,7 @@ class Controller:
                 dst_ip_raw = self.ip_str_to_raw(tun_info[1])
                 port_raw = self.port_int_to_raw(tun_info[2])
                 send_data = b'\x01' + tun_ip_raw + dst_ip_raw + port_raw
-                self.sock.sendto(send_data, addr)
+                self.sock.sendto(self.wrap_data(send_data), addr)
             else:
                 tun_ip = self.alloc_ip()
                 dst_ip = self.alloc_ip()
@@ -101,7 +101,7 @@ class Controller:
                 tun_ip_raw = self.ip_str_to_raw(tun_ip)
                 dst_ip_raw = self.ip_str_to_raw(dst_ip)
                 send_data = b'\x01' + tun_ip_raw + dst_ip_raw + port_raw
-                self.sock.sendto(send_data, addr)
+                self.sock.sendto(self.wrap_data(send_data), addr)
 
     def handle_timeout(self):
         while self.running:
