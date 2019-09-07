@@ -17,6 +17,7 @@ class Controller:
         self.tun_name_list = []
         for i in range(1, 255):
             self.ip_list.append('10.0.0.' + str(i))
+            self.tun_name_list.append('tun' + str(i - 1))
         self.id_to_server = {}
         self.server_to_tun_name = {}
         self.tun_name_to_info = {}
