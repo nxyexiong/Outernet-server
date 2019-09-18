@@ -1,10 +1,12 @@
 import socket
+import select
 import threading
 import time
 import os
 
 from cipher import AESCipher
 from server import Server
+from logger import LOGGER
 
 CLIENT_TIMEOUT = 24 * 60 * 60  # 1 day
 TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
@@ -12,6 +14,7 @@ TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
 
 class Controller:
     def __init__(self, port, secret, id_list):
+        LOGGER.info("Controller init with port: %d, secret: %s" % (port, secret))
         self.id_list = id_list
         self.ip_list = []
         self.tun_name_list = []
@@ -28,7 +31,7 @@ class Controller:
         self.running = False
 
     def run(self):
-        print("controller run")
+        LOGGER.info("Controller run")
         self.running = True
         self.recv_thread = threading.Thread(target=self.handle_recv)
         self.recv_thread.start()
@@ -36,7 +39,7 @@ class Controller:
         self.timeout_thread.start()
 
     def stop(self):
-        print("controller stop")
+        LOGGER.info("Controller stop")
         self.running = False
         self.sock.close()
         for key, value in self.server_to_tun_name.items():
@@ -44,10 +47,14 @@ class Controller:
             os.system('./uninstall.sh ' + value)
 
     def handle_recv(self):
+        LOGGER.info("Controller start recv handler")
         while self.running:
+            readable, _, _ = select.select([self.sock,], [], [], timeout=1)
+            if not readable:
+                continue
             data, addr = self.sock.recvfrom(2048)
             data = self.unwrap_data(data)
-            print("controller recv")
+            LOGGER.info("Controller recv")
 
             if data[0] != 0x01:
                 time.sleep(0.5)  # avoid ddos
@@ -61,18 +68,18 @@ class Controller:
             if server:
                 tun_name = self.server_to_tun_name.get(server)
                 if not tun_name:
-                    print("error tun_name not found")
+                    LOGGER.warn("Controller tun_name not found")
                     server.stop()
                     self.id_to_server.pop(identification)
                     continue
                 tun_info = self.tun_name_to_info.get(tun_name)
                 if not tun_info:
-                    print("error tun_info not found")
+                    LOGGER.warn("Controller tun_info not found")
                     self.server_to_tun_name.pop(server)
                     server.stop()
                     self.id_to_server.pop(identification)
                     continue
-                print("controller get registered client")
+                LOGGER.info("Controller get registered client with tun_name: %s, tun_ip: %s, dst_ip: %s, port: %d" % (tun_name, tun_info[0], tun_info[1], tun_info[2]))
                 server.client_addr = addr
                 tun_ip_raw = self.ip_str_to_raw(tun_info[0])
                 dst_ip_raw = self.ip_str_to_raw(tun_info[1])
@@ -84,17 +91,18 @@ class Controller:
                 dst_ip = self.alloc_ip()
                 tun_name = self.alloc_tun_name()
                 if not tun_ip or not dst_ip or not tun_name:
+                    LOGGER.error("Controller tun_ip or dst_ip or tun_name cannot be alloced")
                     self.free_ip(tun_ip)
                     self.free_ip(dst_ip)
                     self.free_tun_name(tun_name)
                     time.sleep(0.5)
                     continue
-                print("controller get unregistered client")
                 os.system("./install.sh " + tun_name + " " + tun_ip + " " + dst_ip)
                 server = Server(self.secret, tun_name, addr)
                 server.run()
                 port = server.sock.getsockname()[1]
                 port_raw = self.port_int_to_raw(port)
+                LOGGER.info("controller get unregistered client with tun_name: %s, tun_ip: %s, dst_ip: %s, port: %d" % (tun_name, tun_ip, dst_ip, port))
                 self.id_to_server[identification] = server
                 self.server_to_tun_name[server] = tun_name
                 self.tun_name_to_info[tun_name] = (tun_ip, dst_ip, port)
@@ -104,24 +112,33 @@ class Controller:
                 self.sock.sendto(self.wrap_data(send_data), addr)
 
     def handle_timeout(self):
+        LOGGER.info("Controller start timeout handler")
+        sec = 0
         while self.running:
+            LOGGER.debug("Controller check timeout ticking")
+            if (sec < TIMEOUT_CHECK_INTERVAL):
+                time.sleep(1)
+                sec += 1
+                continue
+            sec = 0
+            LOGGER.info("Controller check timeout")
             for identification, server in self.id_to_server.items():
                 now = time.time()
                 tun_name = self.server_to_tun_name.get(server)
                 if not tun_name:
-                    print("timeout: error tun_name not found")
+                    LOGGER.error("Controller timeout tun_name not found")
                     server.stop()
                     self.id_to_server.pop(identification)
                     break
                 tun_info = self.tun_name_to_info.get(tun_name)
                 if not tun_info:
-                    print("timeout: error tun_info not found")
+                    LOGGER.error("Controller timeout tun_info not found")
                     self.server_to_tun_name.pop(server)
                     server.stop()
                     self.id_to_server.pop(identification)
                     break
                 if server.last_active_time - now > CLIENT_TIMEOUT:
-                    print("timeout: client timeout")
+                    LOGGER.info("Controller client timeout with tun_info: %s" % (tun_info,))
                     self.tun_name_to_info.pop(tun_name)
                     self.free_ip(tun_info[0])
                     self.free_ip(tun_info[1])
@@ -130,7 +147,6 @@ class Controller:
                     server.stop()
                     self.id_to_server.pop(identification)
                     break
-            time.sleep(TIMEOUT_CHECK_INTERVAL)
 
     def alloc_tun_name(self):
         for i in range(0, 255):
