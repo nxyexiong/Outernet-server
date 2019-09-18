@@ -42,9 +42,9 @@ class Server:
     def handle_recv(self):
         LOGGER.info("Server start recv handler")
         while self.running:
-            readable, _, _ = select.select([self.sock,], [], [], 1)
-            if not readable:
-                continue
+            # readable, _, _ = select.select([self.sock,], [], [], 1)
+            # if not readable:
+            #     continue
             data, src = self.sock.recvfrom(2048)
             LOGGER.debug("Server recv data")
             self.last_active_time = time.time()

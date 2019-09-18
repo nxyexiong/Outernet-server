@@ -49,9 +49,9 @@ class Controller:
     def handle_recv(self):
         LOGGER.info("Controller start recv handler")
         while self.running:
-            readable, _, _ = select.select([self.sock,], [], [], 1)
-            if not readable:
-                continue
+            # readable, _, _ = select.select([self.sock,], [], [], 1)
+            # if not readable:
+            #     continue
             data, addr = self.sock.recvfrom(2048)
             data = self.unwrap_data(data)
             LOGGER.info("Controller recv")
