@@ -28,8 +28,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             LOGGER.info("terminating...")
             controller.stop()
-            time.sleep(1)
             break
 
     LOGGER.info("terminated")
-    exit(0)

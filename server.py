@@ -28,9 +28,11 @@ class Server:
 
     def stop(self):
         LOGGER.info("Server stop")
-        self.running = False
-        self.sock.close()
         self.tun.stop()
+        self.running = False
+        while self.recv_thread.is_alive():
+            time.sleep(1)
+        self.sock.close()
 
     def send_to_client(self, data):
         LOGGER.debug("Server send to client")

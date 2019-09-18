@@ -3,6 +3,7 @@ import struct
 import os
 import threading
 import select
+import time
 
 from logger import LOGGER
 
@@ -32,6 +33,8 @@ class TUN:
     def stop(self):
         LOGGER.info("TUN stop")
         self.running = False
+        while self.read_thread.is_alive():
+            time.sleep(1)
         os.close(self.tun)
 
     def write(self, data):
@@ -41,9 +44,9 @@ class TUN:
     def handle_read(self):
         LOGGER.info("TUN start read handler")
         while self.running:
-            # readable, _, _ = select.select([self.tun,], [], [], 1)
-            # if not readable:
-            #     continue
+            readable, _, _ = select.select([self.tun,], [], [], 1)
+            if not readable:
+                continue
             data = os.read(self.tun, 2048)
             LOGGER.debug("TUN read")
             if not self.recv_cb:

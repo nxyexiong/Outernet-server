@@ -40,11 +40,15 @@ class Controller:
 
     def stop(self):
         LOGGER.info("Controller stop")
-        self.running = False
-        self.sock.close()
         for key, value in self.server_to_tun_name.items():
             key.stop()
             os.system('./uninstall.sh ' + value)
+        self.running = False
+        while self.recv_thread.is_alive():
+            time.sleep(1)
+        self.sock.close()
+        while self.timeout_thread.is_alive():
+            time.sleep(1)
 
     def handle_recv(self):
         LOGGER.info("Controller start recv handler")
