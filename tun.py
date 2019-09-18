@@ -41,9 +41,9 @@ class TUN:
     def handle_read(self):
         LOGGER.info("TUN start read handler")
         while self.running:
-            readable, _, _ = select.select([self.tun,], [], [], 1)
-            if not readable:
-                continue
+            # readable, _, _ = select.select([self.tun,], [], [], 1)
+            # if not readable:
+            #     continue
             data = os.read(self.tun, 2048)
             LOGGER.debug("TUN read")
             if not self.recv_cb:
