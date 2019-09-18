@@ -8,7 +8,7 @@ from cipher import AESCipher
 from server import Server
 from logger import LOGGER
 
-CLIENT_TIMEOUT = 24 * 60 * 60  # 1 day
+CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
 TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
 
 
