@@ -57,9 +57,9 @@ class Server:
         self.send_to_client(data)
 
     def wrap_data(self, data):
-        data = self.cipher.encrypt_all(data)
+        data = self.cipher.encrypt(data)
         return data
 
     def unwrap_data(self, data):
-        data, _ = self.cipher.decrypt_all(data)
+        data = self.cipher.decrypt(data)
         return data
