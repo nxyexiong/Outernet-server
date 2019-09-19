@@ -54,4 +54,4 @@ if __name__ == "__main__":
     ddata, dlen = cipher.decrypt_all(edata)
     assert data == ddata
     assert dlen == len(edata)
-    LOGGER.debug('test ok')
+    print('test ok')
