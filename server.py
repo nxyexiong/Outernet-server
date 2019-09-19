@@ -18,6 +18,8 @@ class Server:
         self.client_addr = client_addr
         self.running = False
         self.last_active_time = time.time()
+        self.rx = 0
+        self.tx = 0
 
     def run(self):
         LOGGER.info("Server run")
@@ -38,7 +40,9 @@ class Server:
         LOGGER.debug("Server send to client")
         if not self.client_addr:
             return
-        self.sock.sendto(self.wrap_data(data), self.client_addr)
+        send_data = self.wrap_data(data)
+        self.tx += len(send_data)
+        self.sock.sendto(send_data, self.client_addr)
 
     def handle_recv(self):
         LOGGER.info("Server start recv handler")
@@ -48,6 +52,7 @@ class Server:
                 continue
             data, src = self.sock.recvfrom(2048)
             LOGGER.debug("Server recv data")
+            self.rx += len(data)
             self.last_active_time = time.time()  # only update when client 
             self.client_addr = src  # avoid ip changing of client
             data = self.unwrap_data(data)

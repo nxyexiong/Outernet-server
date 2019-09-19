@@ -6,10 +6,12 @@ import os
 
 from cipher import AESCipher
 from server import Server
+from profile_utils import save_traffic
 from logger import LOGGER
 
 CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
 TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
+SAVE_TRAFFIC_CHECK_INTERVAL = 5 * 60  # 5 mins
 
 
 class Controller:
@@ -37,6 +39,8 @@ class Controller:
         self.recv_thread.start()
         self.timeout_thread = threading.Thread(target=self.handle_timeout)
         self.timeout_thread.start()
+        self.save_traffic_thread = threading.Thread(target=self.handle_save_traffic)
+        self.save_traffic_thread.start()
 
     def stop(self):
         LOGGER.info("Controller stop")
@@ -151,6 +155,24 @@ class Controller:
                     server.stop()
                     self.id_to_server.pop(identification)
                     break
+
+    def handle_save_traffic(self):
+        LOGGER.info("Controller start save traffic handler")
+        sec = 0
+        while self.running:
+            LOGGER.debug("Controller save traffic ticking")
+            if (sec < SAVE_TRAFFIC_CHECK_INTERVAL):
+                time.sleep(1)
+                sec += 1
+                continue
+            sec = 0
+            LOGGER.info("Controller save traffic")
+            traffic_map = {}
+            for identification, server in self.id_to_server.items():
+                traffic_map[identification] = {}
+                traffic_map[identification]['tx'] = server.tx
+                traffic_map[identification]['rx'] = server.rx
+            save_traffic(traffic_map)
 
     def alloc_tun_name(self):
         for i in range(0, 255):
