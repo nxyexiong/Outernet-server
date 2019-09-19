@@ -191,10 +191,10 @@ class Controller:
         return bytes([port >> 8, port % 256])
 
     def wrap_data(self, data):
-        data = self.cipher.encrypt_all(data)
+        data = self.cipher.encrypt(data)
         return data
 
     def unwrap_data(self, data):
-        data, _ = self.cipher.decrypt_all(data)
+        data = self.cipher.decrypt(data)
         return data
             
