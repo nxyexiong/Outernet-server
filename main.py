@@ -1,5 +1,6 @@
 import time
 
+from tuntap_utils import init_tun, uninit_tun
 from controller import Controller
 from profile_utils import load_identifications
 from logger import LOGGER
@@ -7,6 +8,8 @@ from logger import LOGGER
 
 if __name__ == "__main__":
     LOGGER.info("start Outernet server")
+
+    init_tun()
 
     id_list = load_identifications()
 
@@ -21,5 +24,7 @@ if __name__ == "__main__":
             LOGGER.info("terminating...")
             controller.stop()
             break
+
+    uninit_tun()
 
     LOGGER.info("terminated")

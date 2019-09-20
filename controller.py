@@ -7,6 +7,7 @@ import os
 from cipher import AESCipher
 from server import Server
 from profile_utils import save_traffic
+from tuntap_utils import install_tun, uninstall_tun
 from logger import LOGGER
 
 CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
@@ -46,7 +47,7 @@ class Controller:
         LOGGER.info("Controller stop")
         for key, value in self.server_to_tun_name.items():
             key.stop()
-            os.system('./uninstall.sh ' + value)
+            uninstall_tun(value)
         self.running = False
         while self.recv_thread.is_alive():
             time.sleep(1)
@@ -105,7 +106,7 @@ class Controller:
                     self.free_tun_name(tun_name)
                     time.sleep(0.5)
                     continue
-                os.system("./install.sh " + tun_name + " " + tun_ip + " " + dst_ip)
+                install_tun(tun_name, tun_ip, dst_ip)
                 server = Server(self.secret, tun_name, addr)
                 server.run()
                 port = server.sock.getsockname()[1]
@@ -145,8 +146,9 @@ class Controller:
                     server.stop()
                     self.id_to_server.pop(identification)
                     break
-                if server.last_active_time - now > CLIENT_TIMEOUT:
+                if now - server.last_active_time > CLIENT_TIMEOUT:
                     LOGGER.info("Controller client timeout with tun_info: %s" % (tun_info,))
+                    uninstall_tun(tun_name)
                     self.tun_name_to_info.pop(tun_name)
                     self.free_ip(tun_info[0])
                     self.free_ip(tun_info[1])
