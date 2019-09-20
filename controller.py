@@ -148,13 +148,13 @@ class Controller:
                     break
                 if now - server.last_active_time > CLIENT_TIMEOUT:
                     LOGGER.info("Controller client timeout with tun_info: %s" % (tun_info,))
-                    uninstall_tun(tun_name)
                     self.tun_name_to_info.pop(tun_name)
                     self.free_ip(tun_info[0])
                     self.free_ip(tun_info[1])
                     self.free_tun_name(tun_name)
                     self.server_to_tun_name.pop(server)
                     server.stop()
+                    uninstall_tun(tun_name)
                     self.id_to_server.pop(identification)
                     break
 
