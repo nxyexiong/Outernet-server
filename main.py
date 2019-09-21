@@ -12,7 +12,7 @@ if __name__ == "__main__":
     args = sys.argv
     port = None
     secret = None
-    if len(args < 3):
+    if len(args) < 3:
         LOGGER.error("wrong parameter count")
         sys.exit(1)
     try:
