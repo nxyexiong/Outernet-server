@@ -14,16 +14,22 @@ class AESCipher:
         self.key = hashlib.sha256(secret).digest()
 
     def encrypt(self, raw):
-        raw = Padding.pad(raw, self.pack_pad_len)
-        iv = Random.new().read(self.pack_iv_len)
-        cipher = AES.new(self.key, AES.MODE_CFB, iv)
-        return iv + cipher.encrypt(raw)
+        try:
+            raw = Padding.pad(raw, self.pack_pad_len)
+            iv = Random.new().read(self.pack_iv_len)
+            cipher = AES.new(self.key, AES.MODE_CFB, iv)
+            return iv + cipher.encrypt(raw)
+        except Exception:
+            return b''
 
     def decrypt(self, enc):
-        iv = enc[:self.pack_iv_len]
-        cipher = AES.new(self.key, AES.MODE_CFB, iv)
-        raw = cipher.decrypt(enc[self.pack_iv_len:])
-        return Padding.unpad(raw, self.pack_pad_len)
+        try:
+            iv = enc[:self.pack_iv_len]
+            cipher = AES.new(self.key, AES.MODE_CFB, iv)
+            raw = cipher.decrypt(enc[self.pack_iv_len:])
+            return Padding.unpad(raw, self.pack_pad_len)
+        except Exception:
+            return b''
 
     def encrypt_all(self, raw):
         '''length of data must be under 65536'''
