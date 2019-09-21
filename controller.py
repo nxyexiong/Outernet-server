@@ -65,6 +65,9 @@ class Controller:
             data = self.unwrap_data(data)
             LOGGER.info("Controller recv")
 
+            if len(data) <= 0:
+                continue
+
             if data[0] != 0x01:
                 time.sleep(0.5)  # avoid ddos
                 continue
