@@ -177,6 +177,8 @@ class Controller:
                 traffic_map[identification] = {}
                 traffic_map[identification]['tx'] = server.tx
                 traffic_map[identification]['rx'] = server.rx
+                server.tx = 0
+                server.rx = 0
             save_traffic(traffic_map)
 
     def alloc_tun_name(self):
