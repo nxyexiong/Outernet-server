@@ -4,7 +4,7 @@ import socket
 import select
 import time
 
-from cipher import AESCipher
+from cipher import Chacha20Cipher
 from tun import TUN
 from logger import LOGGER
 
@@ -14,7 +14,7 @@ class Server:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', 0))
         self.tun = TUN(tun_name, self.handle_tun_read)
-        self.cipher = AESCipher(secret)
+        self.cipher = Chacha20Cipher(secret)
         self.client_addr = client_addr
         self.running = False
         self.last_active_time = time.time()

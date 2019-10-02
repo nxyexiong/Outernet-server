@@ -4,7 +4,7 @@ import threading
 import time
 import os
 
-from cipher import AESCipher
+from cipher import Chacha20Cipher
 from server import Server
 from profile_utils import save_traffic
 from tuntap_utils import install_tun, uninstall_tun
@@ -30,7 +30,7 @@ class Controller:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', port))
         self.secret = secret
-        self.cipher = AESCipher(secret)
+        self.cipher = Chacha20Cipher(secret)
         self.running = False
 
     def run(self):
