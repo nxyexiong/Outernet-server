@@ -173,10 +173,8 @@ class Controller:
         sec = 0
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
-                traffic_map_tmp = load_traffic()
                 for identification, server in self.id_to_server.copy().items():
-                    delta = self.traffic_map[identification] - server.traffic_remain
-                    self.traffic_map[identification] = traffic_map_tmp[identification] - delta
+                    self.traffic_map[identification] = server.traffic_remain
                     if server.traffic_remain <= 0:
                         # release server
                         tun_name = self.server_to_tun_name.get(server)
