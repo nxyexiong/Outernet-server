@@ -75,8 +75,11 @@ class Controller:
             identification = data[1:33]
             if not self.profile.is_id_exist(identification):
                 continue
-            if self.profile.get_traffic_remain_by_id(identification) <= 0:
+            traffic_remain = self.profile.get_traffic_remain_by_id(identification)
+            if traffic_remain <= 0:
                 continue
+            name = self.profile.get_name_by_id(identification)
+            LOGGER.info("Controller recv client, name: %s, traffic_remain: %s" % (name, traffic_remain))
 
             server = self.id_to_server.get(identification)
             if server:
@@ -112,7 +115,6 @@ class Controller:
                     time.sleep(0.5)
                     continue
                 install_tun(tun_name, tun_ip, dst_ip)
-                traffic_remain = self.profile.get_traffic_remain_by_id(identification)
                 server = Server(self.secret, tun_name, addr, traffic_remain)
                 server.run()
                 port = server.sock.getsockname()[1]
@@ -176,6 +178,7 @@ class Controller:
                     server.traffic_used = 0
                     if server.traffic_remain <= 0:
                         # release server
+                        LOGGER.info("Controller handle traffic releasing server")
                         tun_name = self.server_to_tun_name.get(server)
                         if not tun_name:
                             LOGGER.error("Controller traffic tun_name not found")

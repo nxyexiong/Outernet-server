@@ -33,6 +33,18 @@ class Profile:
         conn.close()
         return id_map
 
+    def get_name_by_id(self, identification):
+        conn = sqlite3.connect(DATABASE_FILE)
+        cursor = conn.cursor()
+        for item in cursor.execute("SELECT * FROM users"):
+            name = item[0]
+            identification_db = hashlib.sha256(name.encode('utf-8')).digest()
+            if identification == identification_db:
+                conn.close()
+                return name
+        conn.close()
+        return None
+
     def is_id_exist(self, identification):
         id_map = self.get_id_map()
         if identification in id_map:
