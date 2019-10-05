@@ -28,10 +28,7 @@ def load_identifications():
 
 
 # traffic_map = {
-#     b'some_raw_id': {
-#         'rx': 0,
-#         'tx': 0,
-#     },
+#     b'some_raw_id': 0,
 #     ...
 # }
 def save_traffic(traffic_map):
@@ -55,10 +52,8 @@ def save_traffic(traffic_map):
     for key in traffic_map:
         if user_map[key] not in traffic:
             traffic[user_map[key]] = {}
-            traffic[user_map[key]]['tx'] = 0
-            traffic[user_map[key]]['rx'] = 0
-        traffic[user_map[key]]['tx'] += traffic_map[key]['tx']
-        traffic[user_map[key]]['rx'] += traffic_map[key]['rx']
+            traffic[user_map[key]] = 0
+        traffic[user_map[key]] = traffic_map[key]
 
     try:
         f = open(TRAFFIC_FILE, 'w+')
@@ -67,3 +62,25 @@ def save_traffic(traffic_map):
     except Exception:
         LOGGER.error('error writing traffic')
         return False
+
+
+def load_traffic():
+    try:
+        traffic_map = {}
+        users = yaml.load(open(USERS_FILE))['users']
+        user_to_id = {}
+        for item in users:
+            identification = hashlib.sha256(item.encode('utf-8')).digest()
+            user_to_id[item] = identification
+            traffic_map[identification] = 0
+        
+        traffics = yaml.load(open(TRAFFIC_FILE))
+        for key, value in traffics.items():
+            identification = user_to_id.get(key)
+            if identification:
+                traffic_map[identification] = value
+
+        return traffic_map
+    except Exception:
+        LOGGER.error('error loading traffic')
+        return None

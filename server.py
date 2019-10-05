@@ -9,7 +9,7 @@ from tun import TUN
 from logger import LOGGER
 
 class Server:
-    def __init__(self, secret, tun_name, client_addr):
+    def __init__(self, secret, tun_name, client_addr, traffic_remain):
         LOGGER.info("Server init with secret: %s, tun_name: %s, client_addr: %s" % (secret, tun_name, client_addr))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', 0))
@@ -18,8 +18,7 @@ class Server:
         self.client_addr = client_addr
         self.running = False
         self.last_active_time = time.time()
-        self.rx = 0
-        self.tx = 0
+        self.traffic_remain = traffic_remain
 
     def run(self):
         LOGGER.info("Server run")
@@ -41,7 +40,9 @@ class Server:
         if not self.client_addr:
             return
         send_data = self.wrap_data(data)
-        self.tx += len(send_data)
+        self.traffic_remain -= len(send_data)
+        if self.traffic_remain <= 0:
+            return
         self.sock.sendto(send_data, self.client_addr)
 
     def handle_recv(self):
@@ -52,7 +53,9 @@ class Server:
                 continue
             data, src = self.sock.recvfrom(2048)
             LOGGER.debug("Server recv data")
-            self.rx += len(data)
+            self.traffic_remain -= len(data)
+            if self.traffic_remain <= 0:
+                continue
             self.last_active_time = time.time()  # only update when client 
             self.client_addr = src  # avoid ip changing of client
             data = self.unwrap_data(data)

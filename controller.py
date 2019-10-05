@@ -6,19 +6,21 @@ import os
 
 from cipher import Chacha20Cipher
 from server import Server
-from profile_utils import save_traffic
+from profile_utils import load_traffic, save_traffic, load_identifications
 from tuntap_utils import install_tun, uninstall_tun
 from logger import LOGGER
 
 CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
 TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
 SAVE_TRAFFIC_CHECK_INTERVAL = 5 * 60  # 5 mins
+UPDATE_USER_INTERVAL = 5 * 60 # 5 mins
 
 
 class Controller:
-    def __init__(self, port, secret, id_list):
+    def __init__(self, port, secret):
         LOGGER.info("Controller init with port: %d, secret: %s" % (port, secret))
-        self.id_list = id_list
+        self.id_list = load_identifications()
+        self.traffic_map = load_traffic()
         self.ip_list = []
         self.tun_name_list = []
         for i in range(1, 255):
@@ -40,8 +42,10 @@ class Controller:
         self.recv_thread.start()
         self.timeout_thread = threading.Thread(target=self.handle_timeout)
         self.timeout_thread.start()
-        self.save_traffic_thread = threading.Thread(target=self.handle_save_traffic)
-        self.save_traffic_thread.start()
+        self.handle_traffic_thread = threading.Thread(target=self.handle_traffic)
+        self.handle_traffic_thread.start()
+        self.update_user_thread = threading.Thread(target=self.handle_update_user)
+        self.update_user_thread.start()
 
     def stop(self):
         LOGGER.info("Controller stop")
@@ -110,7 +114,10 @@ class Controller:
                     time.sleep(0.5)
                     continue
                 install_tun(tun_name, tun_ip, dst_ip)
-                server = Server(self.secret, tun_name, addr)
+                traffic_remain = self.traffic_map.get(identification)
+                if not traffic_remain:
+                    traffic_remain = 0
+                server = Server(self.secret, tun_name, addr, traffic_remain)
                 server.run()
                 port = server.sock.getsockname()[1]
                 port_raw = self.port_int_to_raw(port)
@@ -161,25 +168,51 @@ class Controller:
                     self.id_to_server.pop(identification)
                     break
 
-    def handle_save_traffic(self):
+    def handle_traffic(self):
         LOGGER.info("Controller start save traffic handler")
         sec = 0
         while self.running:
-            LOGGER.debug("Controller save traffic ticking")
-            if (sec < SAVE_TRAFFIC_CHECK_INTERVAL):
-                time.sleep(1)
-                sec += 1
-                continue
-            sec = 0
-            LOGGER.info("Controller save traffic")
-            traffic_map = {}
-            for identification, server in self.id_to_server.items():
-                traffic_map[identification] = {}
-                traffic_map[identification]['tx'] = server.tx
-                traffic_map[identification]['rx'] = server.rx
-                server.tx = 0
-                server.rx = 0
-            save_traffic(traffic_map)
+            if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
+                for identification, server in self.id_to_server.copy().items():
+                    self.traffic_map[identification] = server.traffic_remain
+                    if server.traffic_remain <= 0:
+                        # release server
+                        tun_name = self.server_to_tun_name.get(server)
+                        if not tun_name:
+                            LOGGER.error("Controller traffic tun_name not found")
+                            server.stop()
+                            self.id_to_server.pop(identification)
+                            continue
+                        tun_info = self.tun_name_to_info.get(tun_name)
+                        if not tun_info:
+                            LOGGER.error("Controller traffic tun_info not found")
+                            self.server_to_tun_name.pop(server)
+                            server.stop()
+                            self.id_to_server.pop(identification)
+                            continue
+                        self.tun_name_to_info.pop(tun_name)
+                        self.free_ip(tun_info[0])
+                        self.free_ip(tun_info[1])
+                        self.free_tun_name(tun_name)
+                        self.server_to_tun_name.pop(server)
+                        server.stop()
+                        uninstall_tun(tun_name)
+                        self.id_to_server.pop(identification)
+                save_traffic(self.traffic_map)
+
+            time.sleep(1)
+            sec += 1
+
+        save_traffic(self.traffic_map)
+
+    def handle_update_user(self):
+        sec = 0
+        while self.running:
+            if sec % UPDATE_USER_INTERVAL == 0:
+                self.id_list = load_identifications()
+
+            time.sleep(1)
+            sec += 1
 
     def alloc_tun_name(self):
         for i in range(0, 255):
