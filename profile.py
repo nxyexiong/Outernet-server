@@ -8,7 +8,7 @@ class Profile:
     def __init__(self):
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, traffic_remain INTEGER DEFAULT 0);")
+        cursor.execute("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, desc TEXT DEFAULT '', traffic_remain INTEGER DEFAULT 0);")
 
     def get_id_list(self):
         id_list = []

@@ -75,6 +75,8 @@ class Controller:
             identification = data[1:33]
             if not self.profile.is_id_exist(identification):
                 continue
+            if self.profile.get_traffic_remain_by_id(identification) <= 0:
+                continue
 
             server = self.id_to_server.get(identification)
             if server:
@@ -167,6 +169,7 @@ class Controller:
         sec = 0
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
+                LOGGER.info("Controller handle traffic")
                 for identification, server in self.id_to_server.copy().items():
                     self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
                     server.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
