@@ -19,6 +19,7 @@ class Server:
         self.running = False
         self.last_active_time = time.time()
         self.traffic_remain = traffic_remain
+        self.traffic_used = 0
 
     def run(self):
         LOGGER.info("Server run")
@@ -40,8 +41,8 @@ class Server:
         if not self.client_addr:
             return
         send_data = self.wrap_data(data)
-        self.traffic_remain -= len(send_data)
-        if self.traffic_remain <= 0:
+        self.traffic_used += len(send_data)
+        if self.traffic_remain - self.traffic_used <= 0:
             return
         self.sock.sendto(send_data, self.client_addr)
 
@@ -53,8 +54,8 @@ class Server:
                 continue
             data, src = self.sock.recvfrom(2048)
             LOGGER.debug("Server recv data")
-            self.traffic_remain -= len(data)
-            if self.traffic_remain <= 0:
+            self.traffic_used += len(data)
+            if self.traffic_remain - self.traffic_used <= 0:
                 continue
             self.last_active_time = time.time()  # only update when client 
             self.client_addr = src  # avoid ip changing of client

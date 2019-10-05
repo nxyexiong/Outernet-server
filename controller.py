@@ -6,21 +6,19 @@ import os
 
 from cipher import Chacha20Cipher
 from server import Server
-from profile_utils import load_traffic, save_traffic, load_identifications
 from tuntap_utils import install_tun, uninstall_tun
+from profile import Profile
 from logger import LOGGER
 
 CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
 TIMEOUT_CHECK_INTERVAL = 30 * 60  # half an hour
 SAVE_TRAFFIC_CHECK_INTERVAL = 5 * 60  # 5 mins
-UPDATE_USER_INTERVAL = 5 * 60 # 5 mins
 
 
 class Controller:
     def __init__(self, port, secret):
         LOGGER.info("Controller init with port: %d, secret: %s" % (port, secret))
-        self.id_list = load_identifications()
-        self.traffic_map = load_traffic()
+        self.profile = Profile()
         self.ip_list = []
         self.tun_name_list = []
         for i in range(1, 255):
@@ -44,8 +42,6 @@ class Controller:
         self.timeout_thread.start()
         self.handle_traffic_thread = threading.Thread(target=self.handle_traffic)
         self.handle_traffic_thread.start()
-        self.update_user_thread = threading.Thread(target=self.handle_update_user)
-        self.update_user_thread.start()
 
     def stop(self):
         LOGGER.info("Controller stop")
@@ -77,7 +73,7 @@ class Controller:
                 continue
 
             identification = data[1:33]
-            if identification not in self.id_list:
+            if not self.profile.is_id_exist(identification):
                 continue
 
             server = self.id_to_server.get(identification)
@@ -114,9 +110,7 @@ class Controller:
                     time.sleep(0.5)
                     continue
                 install_tun(tun_name, tun_ip, dst_ip)
-                traffic_remain = self.traffic_map.get(identification)
-                if not traffic_remain:
-                    traffic_remain = 0
+                traffic_remain = self.profile.get_traffic_remain_by_id(identification)
                 server = Server(self.secret, tun_name, addr, traffic_remain)
                 server.run()
                 port = server.sock.getsockname()[1]
@@ -174,7 +168,9 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 for identification, server in self.id_to_server.copy().items():
-                    self.traffic_map[identification] = server.traffic_remain
+                    self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
+                    server.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
+                    server.traffic_used = 0
                     if server.traffic_remain <= 0:
                         # release server
                         tun_name = self.server_to_tun_name.get(server)
@@ -198,21 +194,14 @@ class Controller:
                         server.stop()
                         uninstall_tun(tun_name)
                         self.id_to_server.pop(identification)
-                save_traffic(self.traffic_map)
 
             time.sleep(1)
             sec += 1
 
-        save_traffic(self.traffic_map)
-
-    def handle_update_user(self):
-        sec = 0
-        while self.running:
-            if sec % UPDATE_USER_INTERVAL == 0:
-                self.id_list = load_identifications()
-
-            time.sleep(1)
-            sec += 1
+        # save on stop
+        for identification, server in self.id_to_server.copy().items():
+            self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
+            server.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
 
     def alloc_tun_name(self):
         for i in range(0, 255):
