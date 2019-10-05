@@ -52,7 +52,7 @@ class Profile:
             identification_db = hashlib.sha256(name.encode('utf-8')).digest()
             if (identification == identification_db):
                 traffic_remain -= delta
-                cursor.execute("UPDATE users SET traffic_remain=%s WHERE name=%s" % (str(traffic_remain), name))
+                cursor.execute("UPDATE users SET traffic_remain=%s WHERE name='%s'" % (str(traffic_remain), name))
                 conn.close()
                 return True
         conn.close()
