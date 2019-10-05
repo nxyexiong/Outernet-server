@@ -53,7 +53,7 @@ class Profile:
 
     def get_traffic_remain_by_id(self, identification):
         id_map = self.get_id_map()
-        return id_map.get(identification, 0)
+        return int(id_map.get(identification, 0))
 
     def minus_traffic_remain_by_id(self, identification, delta):
         conn = sqlite3.connect(DATABASE_FILE)
