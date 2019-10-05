@@ -27,7 +27,7 @@ class Profile:
         cursor = conn.cursor()
         for item in cursor.execute("SELECT * FROM users"):
             name = item[0]
-            traffic_remain = item[1]
+            traffic_remain = item[2]
             identification = hashlib.sha256(name.encode('utf-8')).digest()
             id_map[identification] = traffic_remain
         conn.close()
@@ -53,14 +53,14 @@ class Profile:
 
     def get_traffic_remain_by_id(self, identification):
         id_map = self.get_id_map()
-        return int(id_map.get(identification, 0))
+        return id_map.get(identification, 0)
 
     def minus_traffic_remain_by_id(self, identification, delta):
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
         for item in cursor.execute("SELECT * FROM users"):
             name = item[0]
-            traffic_remain = item[1]
+            traffic_remain = item[2]
             identification_db = hashlib.sha256(name.encode('utf-8')).digest()
             if (identification == identification_db):
                 traffic_remain -= delta
