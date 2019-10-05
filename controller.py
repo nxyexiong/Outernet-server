@@ -169,12 +169,14 @@ class Controller:
                     break
 
     def handle_traffic(self):
-        LOGGER.info("Controller start save traffic handler")
+        LOGGER.info("Controller start traffic handler")
         sec = 0
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
+                traffic_map_tmp = load_traffic()
                 for identification, server in self.id_to_server.copy().items():
-                    self.traffic_map[identification] = server.traffic_remain
+                    delta = self.traffic_map[identification] - server.traffic_remain
+                    self.traffic_map[identification] = traffic_map_tmp[identification] - delta
                     if server.traffic_remain <= 0:
                         # release server
                         tun_name = self.server_to_tun_name.get(server)
