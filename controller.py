@@ -75,10 +75,11 @@ class Controller:
             identification = data[1:33]
             if not self.profile.is_id_exist(identification):
                 continue
+            name = self.profile.get_name_by_id(identification)
             traffic_remain = self.profile.get_traffic_remain_by_id(identification)
             if traffic_remain <= 0:
+                LOGGER.info("Controller recv client but traffic <= 0, name: %s, traffic_remain: %s" % (name, traffic_remain))
                 continue
-            name = self.profile.get_name_by_id(identification)
             LOGGER.info("Controller recv client, name: %s, traffic_remain: %s" % (name, traffic_remain))
 
             server = self.id_to_server.get(identification)
