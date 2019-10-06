@@ -68,8 +68,16 @@ class Controller:
             if len(data) <= 0:
                 continue
 
-            if data[0] != 0x01:
-                time.sleep(0.5)  # avoid ddos
+            if data[0] == 0x02 and len(data) == 33:  # traffic query
+                identification = data[1:33]
+                traffic_remain = self.profile.get_traffic_remain_by_id(identification)
+                traffic_remain_mb_int = int(traffic_remain / (1024 * 1024))
+                traffic_remain_bytes = traffic_remain_mb_int.to_bytes(4, 'big')
+                send_data = b'\x02' + traffic_remain_bytes
+                self.sock.sendto(self.wrap_data(send_data), addr)
+                continue
+
+            if data[0] != 0x01 or len(data) != 33:  # new tunnel
                 continue
 
             identification = data[1:33]
