@@ -71,16 +71,17 @@ class Relay:
             self.relay_dst_ip_raw = dst_ip_raw
             self.relay_recv_thread = threading.Thread(target=self.handle_relay_recv)
             self.relay_recv_thread.start()
+            self.send_handshake_reply(self.controller_sock)
             self.handshaked = True
             break
 
-    def send_handshake_reply(self):
+    def send_handshake_reply(self, sock):
         if not self.handshaked:
             return
         port = self.sock.getsockname()[1]
         port_raw = bytes([port >> 8, port % 256])
         send_data = b'\x01' + self.relay_tun_ip_raw + self.relay_dst_ip_raw + port_raw
-        self.controller_sock.sendto(self.wrap_data(send_data), self.client_addr)
+        sock.sendto(self.wrap_data(send_data), self.client_addr)
 
     def send_to_client(self, data):
         LOGGER.debug("Relay send to client")

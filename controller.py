@@ -55,6 +55,8 @@ class Controller:
         for key, value in self.server_to_tun_name.items():
             key.stop()
             uninstall_tun(value)
+        for key, value in self.id_to_relay.items():
+            value.stop()
         self.running = False
         while self.recv_thread.is_alive():
             time.sleep(1)
@@ -107,7 +109,7 @@ class Controller:
                     self.id_to_relay[identification] = relay
                 else:
                     LOGGER.info("Controller recv exist relay")
-                    relay.send_handshake_reply()
+                    relay.send_handshake_reply(self.sock)
                 continue
 
             server = self.id_to_server.get(identification)
@@ -212,6 +214,11 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 LOGGER.info("Controller handle traffic")
+
+                # relay mode
+                if self.is_relay:
+                    continue
+
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
                     self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
