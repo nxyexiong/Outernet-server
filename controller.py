@@ -214,11 +214,6 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 LOGGER.info("Controller handle traffic")
-
-                # relay mode
-                if self.is_relay:
-                    continue
-
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
                     self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
