@@ -6,6 +6,7 @@ import os
 
 from cipher import Chacha20Cipher
 from server import Server
+from relay import Relay
 from tuntap_utils import install_tun, uninstall_tun
 from profile import Profile
 from logger import LOGGER
@@ -25,6 +26,7 @@ class Controller:
             self.ip_list.append('10.0.0.' + str(i))
             self.tun_name_list.append('tun' + str(i - 1))
         self.id_to_server = {}
+        self.id_to_relay = {}
         self.server_to_tun_name = {}
         self.tun_name_to_info = {}
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -32,6 +34,11 @@ class Controller:
         self.secret = secret
         self.cipher = Chacha20Cipher(secret)
         self.running = False
+
+    def set_relay(self, server, port):
+        self.is_relay = True
+        self.relay_server = server
+        self.relay_port = port
 
     def run(self):
         LOGGER.info("Controller run")
@@ -89,6 +96,19 @@ class Controller:
                 LOGGER.info("Controller recv client but traffic <= 0, name: %s, traffic_remain: %s" % (name, traffic_remain))
                 continue
             LOGGER.info("Controller recv client, name: %s, traffic_remain: %s" % (name, traffic_remain))
+
+            # relay mode
+            if self.is_relay:
+                relay = self.id_to_relay.get(identification)
+                if not relay:
+                    LOGGER.info("Controller recv new relay")
+                    relay = Relay(self.sock, self.secret, addr, self.relay_server, self.relay_port, identification)
+                    relay.run()
+                    self.id_to_relay[identification] = relay
+                else:
+                    LOGGER.info("Controller recv exist relay")
+                    relay.send_handshake_reply()
+                continue
 
             server = self.id_to_server.get(identification)
             if server:
@@ -148,6 +168,17 @@ class Controller:
                 continue
             sec = 0
             LOGGER.info("Controller check timeout")
+
+            # relay mode
+            if self.is_relay:
+                for identification, relay in self.id_to_relay.items():
+                    now = time.time()
+                    if now - relay.last_active_time > CLIENT_TIMEOUT:
+                        relay.stop()
+                        self.id_to_relay.pop(identification)
+                        break
+                continue
+
             for identification, server in self.id_to_server.items():
                 now = time.time()
                 tun_name = self.server_to_tun_name.get(server)
