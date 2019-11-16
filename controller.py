@@ -34,6 +34,7 @@ class Controller:
         self.secret = secret
         self.cipher = Chacha20Cipher(secret)
         self.running = False
+        self.is_relay = False
 
     def set_relay(self, server, port):
         self.is_relay = True
