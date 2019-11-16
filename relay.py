@@ -71,8 +71,8 @@ class Relay:
             self.relay_dst_ip_raw = dst_ip_raw
             self.relay_recv_thread = threading.Thread(target=self.handle_relay_recv)
             self.relay_recv_thread.start()
-            self.send_handshake_reply(self.controller_sock, self.client_addr)
             self.handshaked = True
+            self.send_handshake_reply(self.controller_sock, self.client_addr)
             break
 
     def send_handshake_reply(self, sock, addr):
