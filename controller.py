@@ -109,7 +109,7 @@ class Controller:
                     self.id_to_relay[identification] = relay
                 else:
                     LOGGER.info("Controller recv exist relay")
-                    relay.send_handshake_reply(self.sock)
+                    relay.send_handshake_reply(self.sock, addr)
                 continue
 
             server = self.id_to_server.get(identification)

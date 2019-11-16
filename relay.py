@@ -48,7 +48,7 @@ class Relay:
         self.relay_sock.close()
 
     def handle_relay_handshake(self):
-        LOGGER.debug("Relay handle_relay_handshake")
+        LOGGER.info("Relay handle_relay_handshake")
         send_data = b'\x01' + self.relay_identification
         while self.running:
             self.relay_sock.sendto(self.wrap_data(send_data), self.relay_server_addr)
@@ -62,7 +62,7 @@ class Relay:
             data = self.unwrap_data(data)
             if len(data) != 11 or data[0] != 0x01:
                 continue
-            LOGGER.debug("Relay handshake recved")
+            LOGGER.info("Relay handshake recved")
             tun_ip_raw = data[1:5]
             dst_ip_raw = data[5:9]
             port = data[9] * 256 + data[10]
@@ -71,17 +71,17 @@ class Relay:
             self.relay_dst_ip_raw = dst_ip_raw
             self.relay_recv_thread = threading.Thread(target=self.handle_relay_recv)
             self.relay_recv_thread.start()
-            self.send_handshake_reply(self.controller_sock)
+            self.send_handshake_reply(self.controller_sock, self.client_addr)
             self.handshaked = True
             break
 
-    def send_handshake_reply(self, sock):
+    def send_handshake_reply(self, sock, addr):
         if not self.handshaked:
             return
         port = self.sock.getsockname()[1]
         port_raw = bytes([port >> 8, port % 256])
         send_data = b'\x01' + self.relay_tun_ip_raw + self.relay_dst_ip_raw + port_raw
-        sock.sendto(self.wrap_data(send_data), self.client_addr)
+        sock.sendto(self.wrap_data(send_data), addr)
 
     def send_to_client(self, data):
         LOGGER.debug("Relay send to client")
@@ -115,7 +115,7 @@ class Relay:
             self.send_to_relay(data)
 
     def handle_relay_recv(self):
-        LOGGER.info("Relay start recv handler")
+        LOGGER.info("Relay start relay recv handler")
         while self.running:
             readable, _, _ = select.select([self.relay_sock,], [], [], 1)
             if not readable:
