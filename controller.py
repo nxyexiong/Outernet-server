@@ -2,7 +2,6 @@ import socket
 import select
 import threading
 import time
-import os
 
 from cipher import Chacha20Cipher
 from server import Server
@@ -17,9 +16,10 @@ SAVE_TRAFFIC_CHECK_INTERVAL = 5 * 60  # 5 mins
 
 
 class Controller:
-    def __init__(self, port, secret):
+    def __init__(self, port, secret, db_host, db_user, db_passwd):
         LOGGER.info("Controller init with port: %d, secret: %s" % (port, secret))
-        self.profile = Profile()
+        self.profile = Profile(db_host, db_user, db_passwd)
+        self.profile.get_conn(is_check=True)  # check if db is ok
         self.ip_list = []
         self.tun_name_list = []
         for i in range(1, 255):
@@ -78,6 +78,7 @@ class Controller:
             if len(data) <= 0:
                 continue
 
+            # TODO: deprecated by client
             if data[0] == 0x02 and len(data) == 33:  # traffic query
                 identification = data[1:33]
                 traffic_remain = self.profile.get_traffic_remain_by_id(identification)
@@ -86,6 +87,7 @@ class Controller:
                 send_data = b'\x02' + traffic_remain_bytes
                 self.sock.sendto(self.wrap_data(send_data), addr)
                 continue
+            # end of TODO
 
             if data[0] != 0x01 or len(data) != 33:  # new tunnel
                 continue
@@ -215,6 +217,7 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 LOGGER.info("Controller handle traffic")
+                # save traffic
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
                     self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
@@ -245,6 +248,8 @@ class Controller:
                         server.stop()
                         uninstall_tun(tun_name)
                         self.id_to_server.pop(identification)
+                # refresh database
+                self.profile.refresh_cache()
 
             time.sleep(1)
             sec += 1

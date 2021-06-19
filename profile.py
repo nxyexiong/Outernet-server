@@ -1,48 +1,70 @@
-import sqlite3
+import pymysql
 import hashlib
-
-DATABASE_FILE = 'profile.db'
 
 
 class Profile:
-    def __init__(self):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, desc TEXT DEFAULT '', traffic_remain INTEGER DEFAULT 0);")
+    def __init__(self, host, user, passwd):
+        self.host = host
+        self.user = user
+        self.passwd = passwd
+        # users cache
+        self.users_cache = []
+
+        conn = self.get_conn()
+        if conn is not None:
+            conn.cursor().execute("CREATE TABLE IF NOT EXISTS users (name VARCHAR(50) PRIMARY KEY, description VARCHAR(255) DEFAULT '', traffic_remain BIGINT DEFAULT 0);")
+            conn.commit()
+
+    def get_conn(self, is_check=False):
+        try:
+            return pymysql.connect(host=self.host,
+                                   user=self.user,
+                                   password=self.passwd,
+                                   database='outernet',
+                                   cursorclass=pymysql.cursors.DictCursor)
+        except Exception as err:
+            if is_check:
+                raise err
+            return None
+
+    def refresh_cache(self):
+        conn = self.get_conn()
+        if conn is not None:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users")
+            self.users_cache = cursor.fetchall()
+            return True
+        return False
 
     def get_id_list(self):
+        if not self.users_cache:
+            self.refresh_cache()
         id_list = []
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        for item in cursor.execute("SELECT * FROM users"):
-            name = item[0]
+        for item in self.users_cache:
+            name = item.get('name')
             identification = hashlib.sha256(name.encode('utf-8')).digest()
             id_list.append(identification)
-        conn.close()
         return id_list
 
     def get_id_map(self):
+        if not self.users_cache:
+            self.refresh_cache()
         id_map = {}
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        for item in cursor.execute("SELECT * FROM users"):
-            name = item[0]
-            traffic_remain = item[2]
+        for item in self.users_cache:
+            name = item.get('name')
+            traffic_remain = item.get('traffic_remain')
             identification = hashlib.sha256(name.encode('utf-8')).digest()
             id_map[identification] = traffic_remain
-        conn.close()
         return id_map
 
     def get_name_by_id(self, identification):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        for item in cursor.execute("SELECT * FROM users"):
-            name = item[0]
+        if not self.users_cache:
+            self.refresh_cache()
+        for item in self.users_cache:
+            name = item.get('name')
             identification_db = hashlib.sha256(name.encode('utf-8')).digest()
             if identification == identification_db:
-                conn.close()
                 return name
-        conn.close()
         return None
 
     def is_id_exist(self, identification):
@@ -56,17 +78,13 @@ class Profile:
         return id_map.get(identification, 0)
 
     def minus_traffic_remain_by_id(self, identification, delta):
-        conn = sqlite3.connect(DATABASE_FILE)
-        cursor = conn.cursor()
-        for item in cursor.execute("SELECT * FROM users"):
-            name = item[0]
-            traffic_remain = item[2]
-            identification_db = hashlib.sha256(name.encode('utf-8')).digest()
-            if (identification == identification_db):
-                traffic_remain -= delta
-                cursor.execute("UPDATE users SET traffic_remain=%s WHERE name='%s'" % (traffic_remain, name))
-                conn.commit()
-                conn.close()
-                return True
-        conn.close()
+        name = self.get_name_by_id(identification)
+        if name is None:
+            return False
+        # write database
+        conn = self.get_conn()
+        if conn is not None:
+            conn.cursor().execute("UPDATE users SET traffic_remain=traffic_remain-%s WHERE name='%s'" % (delta, name))
+            conn.commit()
+            return True
         return False
