@@ -107,7 +107,7 @@ class Controller:
                 relay = self.id_to_relay.get(identification)
                 if not relay:
                     LOGGER.info("Controller recv new relay")
-                    relay = Relay(self.sock, self.secret, addr, self.relay_server, self.relay_port, identification)
+                    relay = Relay(self.sock, self.secret, addr, self.relay_server, self.relay_port, identification, traffic_remain)
                     relay.run()
                     self.id_to_relay[identification] = relay
                 else:
@@ -217,7 +217,19 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 LOGGER.info("Controller handle traffic")
-                # save traffic
+                # save relay traffic
+                for identification, relay in self.id_to_relay.copy().items():
+                    name = self.profile.get_name_by_id(identification)
+                    self.profile.minus_traffic_remain_by_id(identification, relay.traffic_used)
+                    relay.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
+                    LOGGER.info("Controller handle traffic name: %s, minus: %s, remain: %s" % (name, relay.traffic_used, relay.traffic_remain))
+                    relay.traffic_used = 0
+                    if relay.traffic_remain <= 0:
+                        # release relay
+                        LOGGER.info("Controller handle traffic releasing relay")
+                        relay.stop()
+                        self.id_to_relay.pop(identification)
+                # save server traffic
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
                     self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)

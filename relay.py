@@ -9,7 +9,7 @@ from tun import TUN
 from logger import LOGGER
 
 class Relay:
-    def __init__(self, controller_sock, secret, client_addr, relay_server, relay_port, relay_identification):
+    def __init__(self, controller_sock, secret, client_addr, relay_server, relay_port, relay_identification, traffic_remain):
         LOGGER.info("Relay init with secret: %s, client_addr: %s" % (secret, client_addr))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', 0))
@@ -17,6 +17,8 @@ class Relay:
         self.client_addr = client_addr
         self.running = False
         self.last_active_time = time.time()
+        self.traffic_remain = traffic_remain
+        self.traffic_used = 0
         # relay
         self.controller_sock = controller_sock
         self.relay_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -90,6 +92,9 @@ class Relay:
         if not self.client_addr:
             return
         send_data = self.wrap_data(data)
+        self.traffic_used += len(send_data)
+        if self.traffic_remain - self.traffic_used <= 0:
+            return
         self.sock.sendto(send_data, self.client_addr)
 
     def send_to_relay(self, data):
@@ -109,6 +114,9 @@ class Relay:
                 continue
             data, src = self.sock.recvfrom(2048)
             LOGGER.debug("Relay recv data")
+            self.traffic_used += len(data)
+            if self.traffic_remain - self.traffic_used <= 0:
+                continue
             self.last_active_time = time.time()  # only update when client 
             self.client_addr = src  # avoid ip changing of client
             data = self.unwrap_data(data)
