@@ -29,6 +29,10 @@ class Relay:
         self.relay_dst_ip_raw = None
         self.handshaked = False
 
+        self.recv_thread = None
+        self.relay_handshake_thread = None
+        self.relay_recv_thread = None
+
     def run(self):
         LOGGER.info("Relay run")
         self.running = True
@@ -40,12 +44,15 @@ class Relay:
     def stop(self):
         LOGGER.info("Relay stop")
         self.running = False
-        while self.recv_thread.is_alive():
-            time.sleep(1)
-        while self.relay_handshake_thread.is_alive():
-            time.sleep(1)
-        while self.relay_recv_thread is not None and self.relay_recv_thread.is_alive():
-            time.sleep(1)
+        if self.recv_thread is not None:
+            while self.recv_thread.is_alive():
+                time.sleep(1)
+        if self.relay_handshake_thread is not None:
+            while self.relay_handshake_thread.is_alive():
+                time.sleep(1)
+        if self.relay_recv_thread is not None:
+            while self.relay_recv_thread is not None and self.relay_recv_thread.is_alive():
+                time.sleep(1)
         self.sock.close()
         self.relay_sock.close()
 

@@ -24,6 +24,8 @@ class TUN:
         self.recv_cb = recv_callback
         self.running = False
 
+        self.read_thread = None
+
     def run(self):
         LOGGER.info("TUN run")
         self.running = True
@@ -33,8 +35,9 @@ class TUN:
     def stop(self):
         LOGGER.info("TUN stop")
         self.running = False
-        while self.read_thread.is_alive():
-            time.sleep(1)
+        if self.read_thread is not None:
+            while self.read_thread.is_alive():
+                time.sleep(1)
         os.close(self.tun)
 
     def write(self, data):

@@ -21,6 +21,8 @@ class Server:
         self.traffic_remain = traffic_remain
         self.traffic_used = 0
 
+        self.recv_thread = None
+
     def run(self):
         LOGGER.info("Server run")
         self.running = True
@@ -32,8 +34,9 @@ class Server:
         LOGGER.info("Server stop")
         self.tun.stop()
         self.running = False
-        while self.recv_thread.is_alive():
-            time.sleep(1)
+        if self.recv_thread is not None:
+            while self.recv_thread.is_alive():
+                time.sleep(1)
         self.sock.close()
 
     def send_to_client(self, data):

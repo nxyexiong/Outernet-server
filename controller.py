@@ -36,6 +36,10 @@ class Controller:
         self.running = False
         self.is_relay = False
 
+        self.recv_thread = None
+        self.timeout_thread = None
+        self.handle_traffic_thread = None
+
     def set_relay(self, server, port):
         self.is_relay = True
         self.relay_server = server
@@ -59,11 +63,16 @@ class Controller:
         for key, value in self.id_to_relay.items():
             value.stop()
         self.running = False
-        while self.recv_thread.is_alive():
-            time.sleep(1)
+        if self.recv_thread is not None:
+            while self.recv_thread.is_alive():
+                time.sleep(1)
         self.sock.close()
-        while self.timeout_thread.is_alive():
-            time.sleep(1)
+        if self.timeout_thread is not None:
+            while self.timeout_thread.is_alive():
+                time.sleep(1)
+        if self.handle_traffic_thread is not None:
+            while self.handle_traffic_thread.is_alive():
+                time.sleep(1)
 
     def handle_recv(self):
         LOGGER.info("Controller start recv handler")
