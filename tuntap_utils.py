@@ -4,6 +4,9 @@ import os
 def init_tun():
     os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
     os.system("iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE")
+    # fix system udp buffer size
+    os.system("sysctl -w net.core.rmem_max=26214400")
+    os.system("sysctl -w net.core.rmem_default=26214400")
 
 
 def uninit_tun():
