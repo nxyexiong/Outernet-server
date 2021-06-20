@@ -5,9 +5,9 @@ import time
 
 from cipher import Chacha20Cipher
 from server import Server
-from relay import Relay
-from tuntap_utils import install_tun, uninstall_tun
 from profile import Profile
+from protocol import (Protocol, CMD_CLIENT_HANDSHAKE, CMD_SERVER_HANDSHAKE,
+                      CMD_CLIENT_DATA, CMD_SERVER_DATA)
 from logger import LOGGER
 
 CLIENT_TIMEOUT = 12 * 60 * 60  # 12 hours
@@ -26,24 +26,15 @@ class Controller:
             self.ip_list.append('10.0.0.' + str(i))
             self.tun_name_list.append('tun' + str(i - 1))
         self.id_to_server = {}
-        self.id_to_relay = {}
-        self.server_to_tun_name = {}
-        self.tun_name_to_info = {}
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', port))
         self.secret = secret
         self.cipher = Chacha20Cipher(secret)
         self.running = False
-        self.is_relay = False
 
         self.recv_thread = None
         self.timeout_thread = None
         self.handle_traffic_thread = None
-
-    def set_relay(self, server, port):
-        self.is_relay = True
-        self.relay_server = server
-        self.relay_port = port
 
     def run(self):
         LOGGER.info("Controller run")
@@ -57,10 +48,7 @@ class Controller:
 
     def stop(self):
         LOGGER.info("Controller stop")
-        for key, value in self.server_to_tun_name.items():
-            key.stop()
-            uninstall_tun(value)
-        for key, value in self.id_to_relay.items():
+        for _, value in self.id_to_server.items():
             value.stop()
         self.running = False
         if self.recv_thread is not None:
@@ -77,99 +65,80 @@ class Controller:
     def handle_recv(self):
         LOGGER.info("Controller start recv handler")
         while self.running:
-            readable, _, _ = select.select([self.sock,], [], [], 1)
+            readable, _, _ = select.select([self.sock, ], [], [], 1)
             if not readable:
                 continue
             data, addr = self.sock.recvfrom(2048)
             data = self.unwrap_data(data)
-            LOGGER.info("Controller recv")
+            LOGGER.debug("Controller recv")
 
             if len(data) <= 0:
                 continue
 
-            # TODO: deprecated by client
-            if data[0] == 0x02 and len(data) == 33:  # traffic query
-                identification = data[1:33]
-                traffic_remain = self.profile.get_traffic_remain_by_id(identification)
-                traffic_remain_mb_int = int(traffic_remain / (1024 * 1024))
-                traffic_remain_bytes = traffic_remain_mb_int.to_bytes(4, 'big')
-                send_data = b'\x02' + traffic_remain_bytes
-                self.sock.sendto(self.wrap_data(send_data), addr)
-                continue
-            # end of TODO
-
-            if data[0] != 0x01 or len(data) != 33:  # new tunnel
+            protocol = Protocol()
+            if protocol.parse(data) <= 1:
                 continue
 
-            identification = data[1:33]
-            if not self.profile.is_id_exist(identification):
-                continue
-            name = self.profile.get_name_by_id(identification)
-            traffic_remain = self.profile.get_traffic_remain_by_id(identification)
-            if traffic_remain <= 0:
-                LOGGER.info("Controller recv client but traffic <= 0, name: %s, traffic_remain: %s" % (name, traffic_remain))
-                continue
-            LOGGER.info("Controller recv client, name: %s, traffic_remain: %s" % (name, traffic_remain))
+            if protocol.cmd == CMD_CLIENT_HANDSHAKE:
+                self.handle_client_handshake(protocol, addr)
+            elif protocol.cmd == CMD_CLIENT_DATA:
+                self.handle_client_data(protocol, addr)
 
-            # relay mode
-            if self.is_relay:
-                relay = self.id_to_relay.get(identification)
-                if not relay:
-                    LOGGER.info("Controller recv new relay")
-                    relay = Relay(self.sock, self.secret, addr, self.relay_server, self.relay_port, identification, traffic_remain)
-                    relay.run()
-                    self.id_to_relay[identification] = relay
-                else:
-                    LOGGER.info("Controller recv exist relay")
-                    relay.send_handshake_reply(self.sock, addr)
-                continue
+    def handle_client_handshake(self, protocol, addr):
+        identification = protocol.identification
+        if not self.profile.is_id_exist(identification):
+            return
+        name = self.profile.get_name_by_id(identification)
+        traffic_remain = self.profile.get_traffic_remain_by_id(identification)
+        if traffic_remain <= 0:
+            LOGGER.info("Controller recv client but traffic <= 0, name: %s, traffic_remain: %s" % (name, traffic_remain))
+            return
+        LOGGER.info("Controller recv client, name: %s, traffic_remain: %s" % (name, traffic_remain))
 
-            server = self.id_to_server.get(identification)
-            if server:
-                tun_name = self.server_to_tun_name.get(server)
-                if not tun_name:
-                    LOGGER.warn("Controller tun_name not found")
-                    server.stop()
-                    self.id_to_server.pop(identification)
-                    continue
-                tun_info = self.tun_name_to_info.get(tun_name)
-                if not tun_info:
-                    LOGGER.warn("Controller tun_info not found")
-                    self.server_to_tun_name.pop(server)
-                    server.stop()
-                    self.id_to_server.pop(identification)
-                    continue
-                LOGGER.info("Controller get registered client with tun_name: %s, tun_ip: %s, dst_ip: %s, port: %d" % (tun_name, tun_info[0], tun_info[1], tun_info[2]))
-                server.client_addr = addr
-                tun_ip_raw = self.ip_str_to_raw(tun_info[0])
-                dst_ip_raw = self.ip_str_to_raw(tun_info[1])
-                port_raw = self.port_int_to_raw(tun_info[2])
-                send_data = b'\x01' + tun_ip_raw + dst_ip_raw + port_raw
-                self.sock.sendto(self.wrap_data(send_data), addr)
-            else:
-                tun_ip = self.alloc_ip()
-                dst_ip = self.alloc_ip()
-                tun_name = self.alloc_tun_name()
-                if not tun_ip or not dst_ip or not tun_name:
-                    LOGGER.error("Controller tun_ip or dst_ip or tun_name cannot be alloced")
-                    self.free_ip(tun_ip)
-                    self.free_ip(dst_ip)
-                    self.free_tun_name(tun_name)
-                    time.sleep(0.5)
-                    continue
-                install_tun(tun_name, tun_ip, dst_ip)
-                server = Server(self.secret, tun_name, addr, traffic_remain)
-                server.run()
-                port = server.sock.getsockname()[1]
-                port_raw = self.port_int_to_raw(port)
-                LOGGER.info("controller get unregistered client with tun_name: %s, tun_ip: %s, dst_ip: %s, port: %d" % (tun_name, tun_ip, dst_ip, port))
-                self.id_to_server[identification] = server
-                self.server_to_tun_name[server] = tun_name
-                self.tun_name_to_info[tun_name] = (tun_ip, dst_ip, port)
-                tun_ip_raw = self.ip_str_to_raw(tun_ip)
-                dst_ip_raw = self.ip_str_to_raw(dst_ip)
-                send_data = b'\x01' + tun_ip_raw + dst_ip_raw + port_raw
-                self.sock.sendto(self.wrap_data(send_data), addr)
+        server = self.id_to_server.get(identification)
+        if server:
+            LOGGER.info("Controller get registered client with tun_name: %s, tun_ip: %s, dst_ip: %s" % (server.tun.name, server.tun.tun_ip, server.tun.dst_ip))
+            server.client_addr = addr
+            protocol = Protocol()
+            protocol.cmd = CMD_SERVER_HANDSHAKE
+            protocol.tun_ip_raw = self.ip_str_to_raw(server.tun.tun_ip)
+            protocol.dst_ip_raw = self.ip_str_to_raw(server.tun.dst_ip)
+            self.sock.sendto(self.wrap_data(protocol.get_bytes()), addr)
+        else:
+            tun_ip = self.alloc_ip()
+            dst_ip = self.alloc_ip()
+            tun_name = self.alloc_tun_name()
+            if not tun_ip or not dst_ip or not tun_name:
+                LOGGER.error("Controller tun_ip or dst_ip or tun_name cannot be alloced")
+                self.free_ip(tun_ip)
+                self.free_ip(dst_ip)
+                self.free_tun_name(tun_name)
+                return
+            server = Server(tun_name, tun_ip, dst_ip, addr, traffic_remain, self.client_send_data_callback)
+            server.run()
+            LOGGER.info("controller get unregistered client with tun_name: %s, tun_ip: %s, dst_ip: %s" % (tun_name, tun_ip, dst_ip))
+            self.id_to_server[identification] = server
+            protocol = Protocol()
+            protocol.cmd = CMD_SERVER_HANDSHAKE
+            protocol.tun_ip_raw = self.ip_str_to_raw(tun_ip)
+            protocol.dst_ip_raw = self.ip_str_to_raw(dst_ip)
+            self.sock.sendto(self.wrap_data(protocol.get_bytes()), addr)
+
+    def handle_client_data(self, protocol, addr):
+        identification = protocol.identification
+        if not self.profile.is_id_exist(identification):
+            return
+        server = self.id_to_server.get(identification)
+        if server:
+            server.handle_recv(protocol.data, addr)
+        else:
+            LOGGER.error("Controller recv client, but server is None")
+
+    def client_send_data_callback(self, data, addr):
+        protocol = Protocol()
+        protocol.cmd = CMD_SERVER_DATA
+        protocol.data = data
+        self.sock.sendto(self.wrap_data(protocol.get_bytes()), addr)
 
     def handle_timeout(self):
         LOGGER.info("Controller start timeout handler")
@@ -183,40 +152,14 @@ class Controller:
             sec = 0
             LOGGER.info("Controller check timeout")
 
-            # relay mode
-            if self.is_relay:
-                for identification, relay in self.id_to_relay.items():
-                    now = time.time()
-                    if now - relay.last_active_time > CLIENT_TIMEOUT:
-                        relay.stop()
-                        self.id_to_relay.pop(identification)
-                        break
-                continue
-
             for identification, server in self.id_to_server.items():
                 now = time.time()
-                tun_name = self.server_to_tun_name.get(server)
-                if not tun_name:
-                    LOGGER.error("Controller timeout tun_name not found")
-                    server.stop()
-                    self.id_to_server.pop(identification)
-                    break
-                tun_info = self.tun_name_to_info.get(tun_name)
-                if not tun_info:
-                    LOGGER.error("Controller timeout tun_info not found")
-                    self.server_to_tun_name.pop(server)
-                    server.stop()
-                    self.id_to_server.pop(identification)
-                    break
                 if now - server.last_active_time > CLIENT_TIMEOUT:
-                    LOGGER.info("Controller client timeout with tun_info: %s" % (tun_info,))
-                    self.tun_name_to_info.pop(tun_name)
-                    self.free_ip(tun_info[0])
-                    self.free_ip(tun_info[1])
-                    self.free_tun_name(tun_name)
-                    self.server_to_tun_name.pop(server)
+                    LOGGER.info("Controller client timeout with tun: %s" % (server.tun.name,))
+                    self.free_ip(server.tun.tun_ip)
+                    self.free_ip(server.tun.dst_ip)
+                    self.free_tun_name(server.tun.name)
                     server.stop()
-                    uninstall_tun(tun_name)
                     self.id_to_server.pop(identification)
                     break
 
@@ -226,18 +169,6 @@ class Controller:
         while self.running:
             if sec % SAVE_TRAFFIC_CHECK_INTERVAL == 0:
                 LOGGER.info("Controller handle traffic")
-                # save relay traffic
-                for identification, relay in self.id_to_relay.copy().items():
-                    name = self.profile.get_name_by_id(identification)
-                    self.profile.minus_traffic_remain_by_id(identification, relay.traffic_used)
-                    relay.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
-                    LOGGER.info("Controller handle traffic name: %s, minus: %s, remain: %s" % (name, relay.traffic_used, relay.traffic_remain))
-                    relay.traffic_used = 0
-                    if relay.traffic_remain <= 0:
-                        # release relay
-                        LOGGER.info("Controller handle traffic releasing relay")
-                        relay.stop()
-                        self.id_to_relay.pop(identification)
                 # save server traffic
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
@@ -248,26 +179,10 @@ class Controller:
                     if server.traffic_remain <= 0:
                         # release server
                         LOGGER.info("Controller handle traffic releasing server")
-                        tun_name = self.server_to_tun_name.get(server)
-                        if not tun_name:
-                            LOGGER.error("Controller traffic tun_name not found")
-                            server.stop()
-                            self.id_to_server.pop(identification)
-                            continue
-                        tun_info = self.tun_name_to_info.get(tun_name)
-                        if not tun_info:
-                            LOGGER.error("Controller traffic tun_info not found")
-                            self.server_to_tun_name.pop(server)
-                            server.stop()
-                            self.id_to_server.pop(identification)
-                            continue
-                        self.tun_name_to_info.pop(tun_name)
-                        self.free_ip(tun_info[0])
-                        self.free_ip(tun_info[1])
-                        self.free_tun_name(tun_name)
-                        self.server_to_tun_name.pop(server)
+                        self.free_ip(server.tun.tun_ip)
+                        self.free_ip(server.tun.dst_ip)
+                        self.free_tun_name(server.tun.name)
                         server.stop()
-                        uninstall_tun(tun_name)
                         self.id_to_server.pop(identification)
                 # refresh database
                 self.profile.refresh_cache()
@@ -325,4 +240,3 @@ class Controller:
     def unwrap_data(self, data):
         data = self.cipher.decrypt(data)
         return data
-            

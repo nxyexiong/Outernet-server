@@ -9,3 +9,4 @@ LOGFILE = 'log/log_%s.log' % DT_STR
 
 logging.basicConfig(level=logging.INFO, filename=LOGFILE, filemode='w+', format='[%(asctime)s][%(levelname).1s] %(message)s')
 LOGGER = logging.getLogger()
+LOGGER.addHandler(logging.StreamHandler())

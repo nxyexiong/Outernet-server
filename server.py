@@ -1,21 +1,15 @@
-import os
-import threading
-import socket
-import select
 import time
 
-from cipher import Chacha20Cipher
 from tun import TUN
 from logger import LOGGER
 
+
 class Server:
-    def __init__(self, secret, tun_name, client_addr, traffic_remain):
-        LOGGER.info("Server init with secret: %s, tun_name: %s, client_addr: %s" % (secret, tun_name, client_addr))
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(('', 0))
-        self.tun = TUN(tun_name, self.handle_tun_read)
-        self.cipher = Chacha20Cipher(secret)
+    def __init__(self, tun_name, tun_ip, dst_ip, client_addr, traffic_remain, send_data_cb):
+        LOGGER.info("Server init with tun_name: %s, tun_ip: %s, dst_ip: %s, client_addr: %s" % (tun_name, tun_ip, dst_ip, client_addr))
+        self.tun = TUN(tun_name, tun_ip, dst_ip, self.handle_tun_read)
         self.client_addr = client_addr
+        self.send_data_cb = send_data_cb
         self.running = False
         self.last_active_time = time.time()
         self.traffic_remain = traffic_remain
@@ -25,53 +19,35 @@ class Server:
 
     def run(self):
         LOGGER.info("Server run")
-        self.running = True
         self.tun.run()
-        self.recv_thread = threading.Thread(target=self.handle_recv)
-        self.recv_thread.start()
+        self.running = True
 
     def stop(self):
         LOGGER.info("Server stop")
-        self.tun.stop()
         self.running = False
-        if self.recv_thread is not None:
-            while self.recv_thread.is_alive():
-                time.sleep(1)
-        self.sock.close()
+        self.tun.stop()
 
     def send_to_client(self, data):
         LOGGER.debug("Server send to client")
+        if not self.running:
+            return
         if not self.client_addr:
             return
-        send_data = self.wrap_data(data)
-        self.traffic_used += len(send_data)
+        self.traffic_used += len(data)
         if self.traffic_remain - self.traffic_used <= 0:
             return
-        self.sock.sendto(send_data, self.client_addr)
+        self.send_data_cb(data, self.client_addr)
 
-    def handle_recv(self):
-        LOGGER.info("Server start recv handler")
-        while self.running:
-            readable, _, _ = select.select([self.sock,], [], [], 1)
-            if not readable:
-                continue
-            data, src = self.sock.recvfrom(2048)
-            LOGGER.debug("Server recv data")
-            self.traffic_used += len(data)
-            if self.traffic_remain - self.traffic_used <= 0:
-                continue
-            self.last_active_time = time.time()  # only update when client 
-            self.client_addr = src  # avoid ip changing of client
-            data = self.unwrap_data(data)
-            self.tun.write(data)
+    def handle_recv(self, data, addr):
+        LOGGER.debug("Server recv data")
+        if not self.running:
+            return
+        self.traffic_used += len(data)
+        if self.traffic_remain - self.traffic_used <= 0:
+            return
+        self.last_active_time = time.time()  # only update when client
+        self.client_addr = addr  # avoid ip changing of client
+        self.tun.write(data)
 
     def handle_tun_read(self, data):
         self.send_to_client(data)
-
-    def wrap_data(self, data):
-        data = self.cipher.encrypt(data)
-        return data
-
-    def unwrap_data(self, data):
-        data = self.cipher.decrypt(data)
-        return data

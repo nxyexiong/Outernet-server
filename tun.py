@@ -5,6 +5,7 @@ import threading
 import select
 import time
 
+from tuntap_utils import install_tun, uninstall_tun
 from logger import LOGGER
 
 TUNSETIFF = 0x400454ca
@@ -15,30 +16,39 @@ IFF_NO_PI = 0x1000
 
 
 class TUN:
-    def __init__(self, name, recv_callback):
-        LOGGER.info("TUN init with name: %s" % (name,))
-        self.tun = os.open('/dev/net/tun', os.O_RDWR)
-        ifr = struct.pack('16sH', name.encode('utf-8'), IFF_TUN | IFF_NO_PI)
-        fcntl.ioctl(self.tun, TUNSETIFF, ifr)
-        fcntl.ioctl(self.tun, TUNSETOWNER, 1000)
+    def __init__(self, name, tun_ip, dst_ip, recv_callback):
+        LOGGER.info("TUN init with name: %s, tun_ip: %s, dst_ip: %s" % (name, tun_ip, dst_ip))
+        self.name = name
+        self.tun_ip = tun_ip
+        self.dst_ip = dst_ip
+
         self.recv_cb = recv_callback
         self.running = False
 
-        self.read_thread = None
+        self.run_thread = None
 
     def run(self):
         LOGGER.info("TUN run")
+        self.run_thread = threading.Thread(target=self.handle_run)
+        self.run_thread.start()
+
+    def handle_run(self):
+        install_tun(self.name, self.tun_ip, self.dst_ip)
+        self.tun = os.open('/dev/net/tun', os.O_RDWR)
+        ifr = struct.pack('16sH', self.name.encode('utf-8'), IFF_TUN | IFF_NO_PI)
+        fcntl.ioctl(self.tun, TUNSETIFF, ifr)
+        fcntl.ioctl(self.tun, TUNSETOWNER, 1000)
         self.running = True
-        self.read_thread = threading.Thread(target=self.handle_read)
-        self.read_thread.start()
+        self.handle_read()
+        os.close(self.tun)
+        uninstall_tun(self.name)
 
     def stop(self):
         LOGGER.info("TUN stop")
         self.running = False
-        if self.read_thread is not None:
-            while self.read_thread.is_alive():
+        if self.run_thread is not None:
+            while self.run_thread.is_alive():
                 time.sleep(1)
-        os.close(self.tun)
 
     def write(self, data):
         LOGGER.debug("TUN write")
@@ -47,7 +57,7 @@ class TUN:
     def handle_read(self):
         LOGGER.info("TUN start read handler")
         while self.running:
-            readable, _, _ = select.select([self.tun,], [], [], 1)
+            readable, _, _ = select.select([self.tun, ], [], [], 1)
             if not readable:
                 continue
             data = os.read(self.tun, 2048)
