@@ -14,7 +14,8 @@ if __name__ == "__main__":
     db_host = None
     db_user = None
     db_passwd = None
-    if len(args) < 6:
+    fee_rate = None
+    if len(args) < 7:
         LOGGER.error("wrong parameter count")
         sys.exit(1)
     try:
@@ -23,6 +24,7 @@ if __name__ == "__main__":
         db_host = str(args[3])
         db_user = str(args[4])
         db_passwd = str(args[5])
+        fee_rate = float(args[6])
     except Exception:
         LOGGER.error("wrong parameter type")
         sys.exit(1)
@@ -33,7 +35,7 @@ if __name__ == "__main__":
     init_tun()
 
     LOGGER.info("start controller")
-    controller = Controller(port, secret, db_host, db_user, db_passwd)
+    controller = Controller(port, secret, db_host, db_user, db_passwd, fee_rate)
     controller.run()
 
     while True:

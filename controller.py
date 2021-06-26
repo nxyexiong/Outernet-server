@@ -16,8 +16,9 @@ SAVE_TRAFFIC_CHECK_INTERVAL = 5 * 60  # 5 mins
 
 
 class Controller:
-    def __init__(self, port, secret, db_host, db_user, db_passwd):
+    def __init__(self, port, secret, db_host, db_user, db_passwd, fee_rate):
         LOGGER.info("Controller init with port: %d, secret: %s" % (port, secret))
+        self.fee_rate = fee_rate
         self.profile = Profile(db_host, db_user, db_passwd)
         self.profile.get_conn(is_check=True)  # check if db is ok
         self.ip_list = []
@@ -172,7 +173,7 @@ class Controller:
                 # save server traffic
                 for identification, server in self.id_to_server.copy().items():
                     name = self.profile.get_name_by_id(identification)
-                    self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
+                    self.profile.minus_traffic_remain_by_id(identification, int(server.traffic_used * self.fee_rate))
                     server.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
                     LOGGER.info("Controller handle traffic name: %s, minus: %s, remain: %s" % (name, server.traffic_used, server.traffic_remain))
                     server.traffic_used = 0
@@ -192,7 +193,7 @@ class Controller:
 
         # save on stop
         for identification, server in self.id_to_server.copy().items():
-            self.profile.minus_traffic_remain_by_id(identification, server.traffic_used)
+            self.profile.minus_traffic_remain_by_id(identification, int(server.traffic_used * self.fee_rate))
             server.traffic_remain = self.profile.get_traffic_remain_by_id(identification)
 
     def alloc_tun_name(self):
