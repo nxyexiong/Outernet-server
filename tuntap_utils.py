@@ -15,7 +15,7 @@ def uninit_tun():
 
 def install_tun(tun_name, tun_ip, dst_ip):
     os.system("ip tuntap add dev %s mode tun" % (tun_name,))
-    os.system("ifconfig %s mtu 1300 up" % (tun_name,))
+    os.system("ifconfig %s mtu 65536 up" % (tun_name,))
     os.system("ifconfig %s %s dstaddr %s up" % (tun_name, tun_ip, dst_ip))
 
 
